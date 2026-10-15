@@ -476,9 +476,17 @@
 
 .oc-settings-nav {
     position: sticky;
-    /* 64px = the pinned header height (app.css), so the strip sits directly
-       under it rather than sliding beneath it. */
-    top: 64px;
+    /* v2.1 — `top: 0`, not the header height.
+     *
+     * The scrolling ancestor here is `.app-main` (`overflow-y: auto` in
+     * ui/shell.css) and the header is OUTSIDE it — a sibling inside
+     * #revoap-shell. A sticky offset is measured from the nearest scrolling
+     * ancestor, so `top: 64px` parked the strip 64px below the top of the
+     * content area, where it then covered whatever scrolled under it: the
+     * "Settings are not protected…" notice and the first card. Zero is the
+     * offset that puts the strip directly under the header — which is what
+     * the 64px meant back when the whole document was the scroller. */
+    top: 0;
     z-index: 5;
     /* Full-bleed inside the content column: -2rem matches .oc-content's
        inline padding, so the band spans the column while the pills stay

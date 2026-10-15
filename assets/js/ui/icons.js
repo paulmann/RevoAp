@@ -66,6 +66,11 @@ const PATHS = {
     checkCircle: 'M22 11.08V12a10 10 0 1 1-5.93-9.14|m9 11 3 3L22 4',
     plus: 'M12 5v14M5 12h14',
     minus: 'M5 12h14',
+    // v2.1 — the Fallback panel marks a retired model with this one
+    // (fallback.js:222, 388). It was referenced but never defined, so the
+    // icon renderer logged `[ui/icons] unknown icon "slash"` and drew
+    // nothing.
+    slash: 'M4 20 20 4',
     trash: 'M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6',
     pencil: 'M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z',
     copy: 'M20 9h-9a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2Z|M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1',

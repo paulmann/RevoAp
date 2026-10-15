@@ -87,6 +87,22 @@ export function h(tag, props = {}, ...children) {
                     else if (value && typeof value === 'object') value.current = el;
                     break;
                 default:
+                    // `onClick` / `onChange` / `onKeydown` — the camelCase
+                    // spelling the panel modules use everywhere (~190 call
+                    // sites in 19 modules). Without this branch the key is
+                    // neither an element property (`el.onClick` does not exist;
+                    // the property is lowercase `onclick`) nor a listener, so
+                    // it fell through to setAttribute('onClick', String(fn)):
+                    // the browser stored it as an inline handler and the CSP
+                    // refused to compile it. The control was silently dead and
+                    // the console carried a violation — which is what made the
+                    // command palette, the sidebar navigation, the accent
+                    // swatches and the appearance dialog's language grid stop
+                    // responding at once.
+                    if (typeof value === 'function' && /^on[A-Z]/.test(key)) {
+                        el.addEventListener(key.slice(2).toLowerCase(), value);
+                        break;
+                    }
                     if (key in el && key !== 'list' && key !== 'form') {
                         try { el[key] = value; break; } catch { /* read-only — fall through to attribute */ }
                     }

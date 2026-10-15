@@ -651,6 +651,35 @@ export function onLocaleChange(fn) {
  * Boot
  * --------------------------------------------------------------------- */
 
+/**
+ * A locale change ends with a navigation.
+ *
+ * Every panel in this console is rendered by PHP — the Help page, the chat
+ * composer, the admin cards — and `t()` cannot re-render text that is already
+ * in the document. `setActive()` writes the `revoap_locale` cookie, which is
+ * exactly what App\I18n\LocaleNegotiator reads on the next request, so one
+ * reload is what turns "the switch was stored" into "the interface is in the
+ * new language". Doing it here rather than at each call site means every
+ * control is covered: the header <select>, the appearance dialog's language
+ * grid, the drawer, the command palette and any future one.
+ *
+ * @param {string} renderedLocale Locale the document was served in.
+ */
+function ensureRerenderOnLocaleChange(renderedLocale) {
+    const GUARD = 'revoap.locale.reload-guard';
+    onLocaleChange(({ locale }) => {
+        if (!locale || locale === renderedLocale) return;
+        try {
+            // Insurance only: if a reload came back in another language than
+            // requested (a proxy rewriting ?lang=, say), the guard stops the
+            // two of them from reloading each other forever.
+            if (sessionStorage.getItem(GUARD) === locale) return;
+            sessionStorage.setItem(GUARD, locale);
+        } catch { /* storage blocked — reload once anyway */ }
+        location.reload();
+    });
+}
+
 /** Read the server-embedded catalogue. Returns the number of keys loaded. */
 export function hydrate() {
     const node = document.getElementById('revoap-i18n-catalog');
@@ -759,6 +788,9 @@ function init() {
     }
     bindControls(document);
     applyTranslations(document);
+    // Registered AFTER the boot override above: the listener must not see the
+    // locale the document was served with, or loading a page would reload it.
+    ensureRerenderOnLocaleChange(active);
 
     window.RevoApI18n = Object.freeze({
         t, tn, has, locale, direction, isRtl,

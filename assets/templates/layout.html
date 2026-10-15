@@ -70,7 +70,12 @@
 
     <link rel="icon" type="image/svg+xml" href="/favicon.svg?v={{asset_version}}">
     <link rel="alternate icon" type="image/svg+xml" href="/favicon.ico?v={{asset_version}}">
-    <link rel="manifest" href="/manifest.webmanifest?v={{asset_version}}">
+    <!-- v2.1 — no manifest link. The layout pointed at
+         /manifest.webmanifest, but no such file has ever shipped (there is no
+         service worker and no icon set to describe either), so every page
+         load ended with a 404 in the console and a "Manifest fetch failed"
+         error. A PWA manifest is worth adding deliberately — with icons and a
+         name — rather than by leaving a dead link behind. -->
 
     <!-- =================================================================
          Appearance bootstrap. INLINE, non-deferred, nonce'd, first in head.
@@ -528,6 +533,69 @@
            copy-buttons.js before the renderers — pipeline.js and history.js
                                         import addCopyButton from it.
          ================================================================= -->
+    <!-- =================================================================
+         v2.1 — module-graph versioning.
+
+         The entry scripts below carry `?v={{asset_version}}`, but the
+         specifiers they import each other with (`./ui/dom.js`) resolve to
+         plain paths, and a bare import cannot carry a query string. Those
+         paths are served with a one-day cache, so after a deploy a returning
+         browser kept yesterday's ui/dom.js: the page looked updated while the
+         shell behaved one release behind — which is exactly how the
+         "dead controls" (command palette, sidebar navigation, accent
+         swatches) survived the fix that repaired them.
+
+         This map points every module at the same versioned URL the entry
+         scripts use, so a deploy invalidates the whole module graph at once.
+         The list is generated, not hand-picked:
+
+             cd <project root> && find assets/js -name '*.js' | sort
+
+         Re-run that and refresh these lines when a module is added or
+         removed.
+         ================================================================= -->
+    <script type="importmap" nonce="{{csp_nonce}}">
+    {"imports":{
+        "/assets/js/admin-ui.js":"/assets/js/admin-ui.js?v={{asset_version}}",
+        "/assets/js/admin.js":"/assets/js/admin.js?v={{asset_version}}",
+        "/assets/js/api.js":"/assets/js/api.js?v={{asset_version}}",
+        "/assets/js/app.js":"/assets/js/app.js?v={{asset_version}}",
+        "/assets/js/copy-buttons.js":"/assets/js/copy-buttons.js?v={{asset_version}}",
+        "/assets/js/copy_to_clipboard.js":"/assets/js/copy_to_clipboard.js?v={{asset_version}}",
+        "/assets/js/dashboard.js":"/assets/js/dashboard.js?v={{asset_version}}",
+        "/assets/js/debug-trace.js":"/assets/js/debug-trace.js?v={{asset_version}}",
+        "/assets/js/extensions.js":"/assets/js/extensions.js?v={{asset_version}}",
+        "/assets/js/fallback.js":"/assets/js/fallback.js?v={{asset_version}}",
+        "/assets/js/history.js":"/assets/js/history.js?v={{asset_version}}",
+        "/assets/js/i18n.js":"/assets/js/i18n.js?v={{asset_version}}",
+        "/assets/js/katex-render.js":"/assets/js/katex-render.js?v={{asset_version}}",
+        "/assets/js/logger.js":"/assets/js/logger.js?v={{asset_version}}",
+        "/assets/js/logs.js":"/assets/js/logs.js?v={{asset_version}}",
+        "/assets/js/mermaid-render.js":"/assets/js/mermaid-render.js?v={{asset_version}}",
+        "/assets/js/migration-banner.js":"/assets/js/migration-banner.js?v={{asset_version}}",
+        "/assets/js/model-selector.js":"/assets/js/model-selector.js?v={{asset_version}}",
+        "/assets/js/models.js":"/assets/js/models.js?v={{asset_version}}",
+        "/assets/js/my-usage.js":"/assets/js/my-usage.js?v={{asset_version}}",
+        "/assets/js/pipeline.js":"/assets/js/pipeline.js?v={{asset_version}}",
+        "/assets/js/prompt-cache.js":"/assets/js/prompt-cache.js?v={{asset_version}}",
+        "/assets/js/queue.js":"/assets/js/queue.js?v={{asset_version}}",
+        "/assets/js/security.js":"/assets/js/security.js?v={{asset_version}}",
+        "/assets/js/settings.js":"/assets/js/settings.js?v={{asset_version}}",
+        "/assets/js/shared.js":"/assets/js/shared.js?v={{asset_version}}",
+        "/assets/js/shell.js":"/assets/js/shell.js?v={{asset_version}}",
+        "/assets/js/skills.js":"/assets/js/skills.js?v={{asset_version}}",
+        "/assets/js/statistic.js":"/assets/js/statistic.js?v={{asset_version}}",
+        "/assets/js/stats.js":"/assets/js/stats.js?v={{asset_version}}",
+        "/assets/js/tab-nav.js":"/assets/js/tab-nav.js?v={{asset_version}}",
+        "/assets/js/theme-boot.js":"/assets/js/theme-boot.js?v={{asset_version}}",
+        "/assets/js/theme.js":"/assets/js/theme.js?v={{asset_version}}",
+        "/assets/js/ui/components.js":"/assets/js/ui/components.js?v={{asset_version}}",
+        "/assets/js/ui/dom.js":"/assets/js/ui/dom.js?v={{asset_version}}",
+        "/assets/js/ui/icons.js":"/assets/js/ui/icons.js?v={{asset_version}}",
+        "/assets/js/users.js":"/assets/js/users.js?v={{asset_version}}",
+        "/assets/js/worker-status.js":"/assets/js/worker-status.js?v={{asset_version}}"
+    }}
+    </script>
     <script type="module" src="/assets/js/logger.js?v={{asset_version}}"></script>
     <script type="module" src="/assets/js/theme.js?v={{asset_version}}"></script>
     <script type="module" src="/assets/js/i18n.js?v={{asset_version}}"></script>
