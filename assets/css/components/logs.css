@@ -1,0 +1,125 @@
+/* Logs tab — admin log viewer. Sidebar list + scrollable content pane.
+ * Styles intentionally mirror the Settings tab so the two feel like
+ * siblings; both share oc-button / oc-alert / oc-input from app.css. */
+
+.oc-logs {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 16px;
+    align-items: start;
+    padding: 12px 0;
+}
+
+.oc-logs-sidebar h3 {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+}
+
+.oc-logs-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.oc-logs-item {
+    padding: 8px 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border);
+    transition: background-color 120ms ease;
+}
+
+.oc-logs-item:last-child { border-bottom: 0; }
+
+.oc-logs-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.oc-logs-item-active {
+    background: var(--color-accent-bg);
+}
+
+.oc-logs-item-missing { opacity: 0.6; }
+
+.oc-logs-name {
+    font-size: 0.92rem;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.oc-logs-meta {
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+    margin-top: 2px;
+}
+
+.oc-logs-main {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.oc-logs-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+
+.oc-logs-label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.oc-logs-lines {
+    width: 90px;
+}
+
+.oc-logs-meta-line {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 6px;
+    word-break: break-all;
+}
+
+.oc-logs-content {
+    margin: 0;
+    padding: 12px;
+    background: var(--color-bg-code);
+    color: var(--color-text-code);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    overflow: auto;
+    max-height: 70vh;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.oc-button-active {
+    background: var(--color-accent-bg);
+    border-color: var(--color-accent);
+}
+
+.oc-button-danger {
+    background: var(--color-error-bg);
+    border-color: var(--color-error);
+    color: var(--color-error);
+}
+
+@media (max-width: 720px) {
+    .oc-logs {
+        grid-template-columns: 1fr;
+    }
+    .oc-logs-content {
+        max-height: 50vh;
+        font-size: 0.72rem;
+    }
+}

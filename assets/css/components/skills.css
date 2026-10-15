@@ -1,0 +1,61 @@
+/* v1.9.4 - the Skills tab: consensus skills with their descriptions. */
+
+.oc-skills-head {
+    margin: 0 0 1rem;
+}
+
+.oc-skills-head h2 {
+    margin: 0 0 0.25rem;
+}
+
+.oc-skills-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 0.9rem;
+}
+
+.oc-skills-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    background: var(--color-bg-secondary);
+}
+
+.oc-skills-card h3 {
+    margin: 0;
+    font-size: 1.05rem;
+}
+
+.oc-skills-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+.oc-skills-slug {
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0 0.35rem;
+}
+
+.oc-skills-desc {
+    margin: 0;
+    flex: 1;
+    font-size: 0.9rem;
+}
+
+.oc-skills-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.3rem;
+}
+
+.oc-skills-status {
+    font-size: 0.8rem;
+}

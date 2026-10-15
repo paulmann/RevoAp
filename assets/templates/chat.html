@@ -1,0 +1,81 @@
+<section class="oc-chat">
+    <h1>Ask the Council</h1>
+    <p class="oc-muted">Submit a query — multiple LLMs deliberate in parallel.</p>
+    <form id="chat-form" class="oc-chat-form" autocomplete="off">
+        <textarea id="chat-input" name="query" rows="4" placeholder="What would you like the council to deliberate?"></textarea>
+        <div id="chat-attachments" class="oc-chat-attachments" hidden></div>
+        <div class="oc-chat-controls">
+            <label class="oc-control" for="reasoning-select" title="Forwards a `reasoning` object to OpenRouter chat completions. Providers that don't support it ignore the field.">
+                <span>Reasoning:</span>
+                <select id="reasoning-select" name="reasoning">
+                    <option value="off">Off</option>
+                    <option value="low">Low</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="high">High</option>
+                </select>
+            </label>
+            <label class="oc-control" for="consensus-skill-select" title="Selects which consensus skill drives L3 scoring + the round-2 system prompt. Semantic Consensus clusters meaning across models; Legacy Consensus uses pairwise token Jaccard.">
+                <span>Consensus skill:</span>
+                <select id="consensus-skill-select" name="consensus_skill">
+                    <option value="">(default — semantic consensus)</option>
+                </select>
+            </label>
+            <!-- v1.8.61 — the skill's own status line. A skill may be linked to
+                 a domain preset, and choosing it then switches the left-hand
+                 consensus pool to that council's models; this is where that is
+                 reported (how many models were bound, which of them no
+                 connector can serve), and where a skill with no link says that
+                 the pool below is the one that will be used. It sits with the
+                 control it describes rather than in the chat status line, which
+                 belongs to the run. -->
+            <output id="consensus-skill-status" class="oc-muted oc-small" role="status"></output>
+            <label class="oc-control" for="cycle-limit-input" title="Maximum number of consensus cycles (rounds) for this run. The engine stops at this limit and runs a final synthesis/arbiter, so a non-converging consensus can never burn unbounded tokens. Range: server-clamped to a safe maximum.">
+                <span>Cycle Limit:</span>
+                <input id="cycle-limit-input" name="cycle_limit" type="number" min="1" max="5" step="1" value="2" inputmode="numeric" />
+            </label>
+            <!-- Single-model mode: one model answers with the selected skill's
+                 own system prompt and its answer is the final answer. Nothing
+                 is compared, so the run records no consensus at all (no score,
+                 no agreement/conflict verdict), and the Cycle Limit above does
+                 not apply — there is no second round to run. -->
+            <label class="oc-control oc-control-single" for="run-mode-single" title="Ask ONE model with the selected skill's system prompts and use its answer as the final answer. No consensus is computed, no second model is called to synthesise, and the Cycle Limit does not apply. Requires the database to accept the 'single' consensus verdict (migration 022); otherwise the run reports that and falls back to the full consensus pipeline.">
+                <input id="run-mode-single" name="single_model" type="checkbox" value="1" />
+                <span>Single model (no consensus)</span>
+            </label>
+            <label class="oc-control oc-control-batch" for="run-mode-batch" title="Submit the L1 fan-out to the provider's Batch API instead of calling the models live. Results arrive asynchronously — usually minutes, up to 24 hours — and the consensus stages run as soon as they do. The worker is never blocked while waiting, a batch can be cancelled from the batch card, and a run waiting on the provider is neither finished nor failed.">
+                <input id="run-mode-batch" name="run_mode" type="checkbox" value="batch" />
+                <span>Run via Batch API</span>
+            </label>
+            <input id="chat-attach-input" type="file" multiple hidden
+                   accept=".txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.log,.yaml,.yml,.xml,.html,.htm,.css,.js,.mjs,.ts,.py,.php,.rb,.go,.rs,.java,.c,.h,.cpp,.hpp,.cs,.sh,.ps1,.sql,.ini,.toml,.conf,.tex,.rst" />
+            <button type="button" id="chat-attach-button" class="oc-button-ghost"
+                    title="Attach text documents (txt, md, csv, json, source code...). Up to 6 files, 128 KB each, 300 KB total; they travel with this run's query to every model.">
+                Attach files
+            </button>
+            <button type="submit" id="chat-submit" class="oc-button-primary">Run pipeline</button>
+            <button type="button" id="chat-batch-cancel" class="oc-button-ghost oc-button-danger" hidden
+                    title="Ask the provider to stop this batch. The request is delivered on the next worker pickup, and the job only becomes cancelled once the provider has actually been told.">
+                Cancel batch
+            </button>
+            <output id="chat-batch-state" class="oc-batch-state" role="status" hidden></output>
+            <button type="button" id="chat-pause" class="oc-button-ghost" disabled
+                    title="Pause the pipeline at the next safe step boundary. In-flight model HTTP calls cannot be aborted, but no further stages will start until you click Continue.">
+                Pause
+            </button>
+            <button type="button" id="chat-reject" class="oc-button-ghost oc-button-danger" disabled
+                    title="Abort the current run. Already-completed steps are kept; the SSE stream is closed and the session is marked rejected.">
+                Reject
+            </button>
+            <button type="button" id="chat-finalize" class="oc-button-ghost" disabled
+                    title="Stop launching further consensus cycles and synthesise a final answer from the results collected so far. Different from Reject (which aborts and produces no answer) and Pause (which can be resumed). Enabled once at least one L1 result is available.">
+                Stop and Run consensus
+            </button>
+            <button type="button" id="chat-share" class="oc-share-button" disabled
+                    title="Mint a public, read-only link to this completed session's query, final answer and consensus history. Recipients see no model controls, no settings, no admin actions.">
+                Share
+            </button>
+        </div>
+    </form>
+    <output id="chat-status" class="oc-chat-status" role="status"></output>
+    <div id="chat-share-result" class="oc-share-result" hidden></div>
+</section>

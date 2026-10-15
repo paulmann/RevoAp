@@ -1,0 +1,464 @@
+/* History tab — past council sessions browser.
+ * Two-pane layout (list + detail) that mirrors Logs/Settings styling
+ * so the tab feels like a sibling. Reuses oc-button / oc-alert /
+ * oc-input from app.css; defines only what's specific to History.
+ *
+ * IMPORTANT: the layout grid is applied ONLY to the inner <div> the
+ * renderer creates, NOT to the outer <section id="oc-history-root">.
+ * The root section already shares this class for thematic styling, so
+ * if `display:grid` were applied to it, the inner wrapper would be the
+ * single grid item and would collapse the detail pane to ~0 width.
+ * `:not(section)` scopes the grid to <div.oc-history> only.
+ */
+
+.oc-history {
+    padding: 12px 0;
+    min-height: 480px;
+    width: 100%;
+}
+
+/* Let the History tab panel fill whatever width its parent column has, and
+ * stop a long unbroken token in the detail pane from inflating the grid's
+ * implicit min-content width. The parent column (`.oc-content`) is itself
+ * uncapped now, so this tracks the window without any tab-specific
+ * max-width — see the note below. */
+[data-tab-panel="history"] {
+    width: 100%;
+    min-width: 0;
+}
+
+/* ---------------------------------------------------------------------
+ * History tab sizing.
+ *
+ * This tab used to need a rule of its own. `.oc-content` carried a 960px
+ * reading-measure cap, which stopped the tab at 960px however wide the
+ * screen was (measured: viewport 1920 -> .oc-content 960px -> panel
+ * 896px -> detail 560px), so a `:has()` rule lifted the cap while
+ * History was the visible panel.
+ *
+ * That cap is gone — `.oc-content` now fills its grid track for every
+ * tab (app.css) — which makes the `:has()` override a no-op, so it was
+ * removed along with its dependency on the caller's layout.
+ *
+ * What remains below is the *intentional* half of the old comment: the
+ * grid gives `minmax(280px, 320px)` to the session list and the rest to
+ * the detail pane, which fills its 1fr track completely. No negative
+ * margins, no tab-specific max-width.
+ *
+ * The detail track's minimum is 0, not a pixel floor. A `minmax(420px, 1fr)`
+ * floor made the two tracks demand 280 + 16 + 420 = 716px of grid box, and
+ * the content column has less than that to give between ~901px and ~1085px
+ * of viewport: measured at a 1024px viewport the column's grid box is only
+ * 682.56px, yet the grid refused to shrink, so documentElement.scrollWidth
+ * came out at 1027 against a clientWidth of 1009 — a horizontal scrollbar
+ * across the whole page whenever History was the active pane. The visible
+ * band was 905–1025px, i.e. the range where the excess outgrows the
+ * column's own right padding: below 901px the pane is already single-column
+ * (media query below), and from 1030px up the excess fits inside that
+ * padding.
+ *
+ * A zero minimum makes the detail pane — not the page — absorb the
+ * shortfall. The pane already carries `min-width: 0` and its text blocks
+ * use `word-break: break-word`, so long content wraps instead of widening
+ * the grid. Measured after the change: detail 286.41px at a 960px viewport,
+ * 346.56px at 1024px, 410px at 1090px — narrow, but inside its own border
+ * and with the text wrapping, which is what a two-pane layout owes an
+ * operator who has not collapsed the window further. The list keeps its
+ * `minmax(280px, 320px)` floor, and the wide end is untouched: from 1100px
+ * up the free space still resolves to exactly the same `320px + 1fr` split
+ * as before the change (1100 / 1200 / 1280 / 1440 / 1920 all identical).
+ * ------------------------------------------------------------------- */
+
+div.oc-history {
+    display: grid;
+    grid-template-columns: minmax(280px, 320px) minmax(0, 1fr);
+    gap: 16px;
+    align-items: start;
+    padding: 0;
+    min-height: 480px;
+    width: 100%;
+}
+
+.oc-history-list-pane {
+    min-width: 0;
+}
+
+.oc-history-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.oc-history-toolbar input,
+.oc-history-toolbar select {
+    width: 100%;
+}
+
+.oc-history-list {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.oc-history-group {
+    padding: 6px 10px;
+    background: var(--color-bg-elevated);
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--color-border);
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.oc-history-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 10px;
+    cursor: pointer;
+    border-bottom: 1px solid var(--color-border);
+    transition: background 0.1s ease;
+}
+
+.oc-history-item:hover {
+    background: var(--color-bg-hover);
+}
+
+.oc-history-item-active {
+    background: var(--color-bg-active);
+}
+
+.oc-history-item-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+}
+
+.oc-history-item-query {
+    font-size: 0.92rem;
+    line-height: 1.3;
+    word-break: break-word;
+}
+
+.oc-history-item-meta {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 10px;
+}
+
+.oc-history-status {
+    display: inline-block;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid currentColor;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+
+/* v1.8.47: the status pill is the one place a status colour is painted as
+   text on a surface that is not the page — a selected row paints
+   --color-bg-active behind it, and the plain status colours fall under AA
+   there (dark error 4.28:1, light success 4.46:1). The -text tokens are
+   tuned for exactly that; the border follows via currentColor. */
+.oc-history-status-completed { color: var(--color-success-text); }
+.oc-history-status-failed    { color: var(--color-error-text); }
+.oc-history-status-running   { color: var(--color-accent); }
+
+.oc-history-pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 4px;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.oc-history-detail {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 16px;
+    max-height: 80vh;
+    overflow-y: auto;
+    /* Guarantee the detail pane occupies the full second grid column.
+     * Without min-width:0 a long unbroken token in a child block would
+     * push the implicit min-content width up and squeeze the column.
+     * width:100% makes the pane fill whatever the grid hands it. */
+    min-width: 0;
+    width: 100%;
+}
+
+.oc-history-detail h2 {
+    margin: 0 0 8px;
+    font-size: 1.1rem;
+}
+
+.oc-history-detail h3 {
+    margin: 16px 0 6px;
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--color-border);
+    padding-bottom: 4px;
+}
+
+.oc-history-detail h4 {
+    margin: 8px 0 4px;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.oc-history-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 10px;
+}
+
+.oc-history-block {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 10px 12px;
+    margin: 4px 0 10px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 0.82rem;
+    line-height: 1.4;
+    max-height: 360px;
+    overflow: auto;
+}
+
+/* ---------------------------------------------------------------------
+ * The final answer block.
+ *
+ * Every other `.oc-history-block` (the query, the runtime options, a step
+ * summary, a stored model response) is a *reference* excerpt: a 360px
+ * scrolling window is the right shape for it, because the operator is
+ * scanning for one line rather than reading the block.
+ *
+ * The final answer is the opposite case — it is the artefact the whole run
+ * exists to produce, and the one block an operator reads end to end. In a
+ * scrolling window it is also the only block with a scrollbar inside a
+ * scrollbar (the `.oc-history-detail` pane is itself a scroller), which is
+ * what made the answer look truncated. So this modifier is the one place
+ * the clamp is lifted: no max-height, no overflow, no line clamp, and the
+ * whole text is laid out at its natural height.
+ *
+ * Colour: a green plaque — dark green with a visible green border in the
+ * dark theme, light green in the light theme — built as a soft vertical
+ * gradient from `--color-final-answer-bg` into the theme's elevated tile,
+ * i.e. "velvet" rather than a flat bright fill, and never the accent blue
+ * the chat surface uses for its own Final Answer card. `color` is pinned
+ * to --color-text-primary instead of inherited so the measured contrast on
+ * this plaque (13.12:1 dark / 14.07:1 light) is the contrast it actually
+ * renders. See themes/{dark,light}.css for the values and the numbers.
+ * ------------------------------------------------------------------- */
+.oc-history-final-answer {
+    max-height: none;
+    overflow: visible;
+    border-radius: 6px;
+    border-color: var(--color-final-answer-border);
+    color: var(--color-text-primary);
+    background: linear-gradient(
+        180deg,
+        var(--color-final-answer-bg) 0%,
+        color-mix(in srgb, var(--color-final-answer-bg) 70%, var(--color-bg-elevated)) 100%
+    );
+}
+
+.oc-history-step {
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    margin: 6px 0;
+    padding: 8px 10px;
+    background: var(--color-bg-elevated);
+}
+
+.oc-history-step-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: baseline;
+    margin-bottom: 4px;
+}
+
+.oc-history-step-key {
+    font-weight: 600;
+    color: var(--color-accent);
+}
+
+.oc-history-step-meta {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.oc-history-response {
+    border-left: 2px solid var(--color-accent);
+    margin: 6px 0 6px 12px;
+    padding: 6px 0 6px 8px;
+}
+
+.oc-history-response-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 4px;
+}
+
+.oc-history-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-style: italic;
+}
+
+.oc-history-event {
+    font-family: ui-monospace, monospace;
+    font-size: 0.78rem;
+    padding: 4px 8px;
+    border-bottom: 1px dotted var(--color-border);
+}
+
+.oc-history-event-type {
+    display: inline-block;
+    min-width: 140px;
+    color: var(--color-accent);
+}
+
+/* ---------------------------------------------------------------------
+ * "Session not finished" — plan preview + rebuild controls.
+ * Sits between the session meta block and the query block so the
+ * affordance is the first thing an operator sees on a broken session.
+ * ------------------------------------------------------------------- */
+.oc-history-repair {
+    border: 1px solid var(--color-warning);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin: 12px 0;
+}
+
+.oc-history-repair h3 {
+    margin-top: 0;
+}
+
+.oc-history-repair-intro {
+    font-size: 0.82rem;
+    color: var(--color-text-secondary);
+    margin-bottom: 8px;
+}
+
+.oc-history-repair-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.oc-history-repair-armed {
+    outline: 2px solid var(--color-warning);
+}
+
+.oc-history-repair-status {
+    font-size: 0.82rem;
+    color: var(--color-accent);
+    margin-bottom: 8px;
+}
+
+.oc-history-repair-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.oc-history-repair-item {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    font-size: 0.82rem;
+}
+
+.oc-history-repair-layer {
+    flex: 0 0 auto;
+    min-width: 56px;
+    font-family: ui-monospace, monospace;
+    color: var(--color-accent);
+}
+
+.oc-history-repair-detail {
+    flex: 1 1 auto;
+    word-break: break-word;
+}
+
+.oc-history-repair-reuse {
+    font-size: 0.82rem;
+    margin-bottom: 6px;
+}
+
+.oc-history-repair-reuse summary {
+    cursor: pointer;
+    color: var(--color-text-secondary);
+}
+
+@media (max-width: 900px) {
+    div.oc-history {
+        grid-template-columns: 1fr;
+    }
+    .oc-history-detail {
+        max-height: none;
+    }
+    .oc-history-list {
+        max-height: 50vh;
+    }
+}
+
+/* v1.8.52: a batch run waiting on the provider is neither completed nor
+   failed, and the pill has to say so — an operator who sees "running" on a
+   session whose L1 has not started yet reads it as a hang. Warning colour,
+   matching the Chat batch card and the Models tab `:batch` badge. */
+.oc-history-status-batch { color: var(--color-warning); }
+.oc-history-status-batch::after { content: ' • batch'; }
+
+
+/* R2 - why a run ended as it did, and the next step, at the top of the detail. */
+.oc-history-diagnosis {
+    margin: 0 0 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-left: 3px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    display: grid;
+    gap: 0.35rem;
+}
+.oc-history-diagnosis-error { border-left-color: var(--color-error); }
+.oc-history-diagnosis-warn  { border-left-color: var(--color-accent); }
+.oc-history-diagnosis-head  { margin: 0; font-weight: 600; }
+.oc-history-diagnosis-actions {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+.oc-history-diagnosis-action { margin-top: 0.2rem; }
+.oc-history-diagnosis-result { margin: 0.2rem 0 0; }
+
+/* R8 - one run can be written out: the action, then the files it wrote. */
+.oc-history-export { margin: 12px 0 16px; }
+.oc-history-export-result { margin-top: 6px; }
+.oc-history-export-link { text-decoration: underline; }

@@ -1,0 +1,53 @@
+/api/tabs admin_configured=false without env/key
+AdminAuth diag.source=none when nothing set
+AdminAuth regression: missing file → configured=false
+AdminAuth regression: missing file → file.exists=false
+AdminAuth regression: missing file → file.read_ok=false
+AdminAuth regression: missing file → token_length=null
+AdminAuth: admin.token from .config.php → configured=true when no env / no .admin.key
+AdminAuth: no env + no file → not configured
+AdminAuth: pinned empty root → not configured (pinned beats keyed)
+AdminAuth: pinned empty root reported via diag.root.source=pinned
+AdminAuth: source=config when only admin.token overlay configured
+AdminAuth: unpinned scan finds keyed root via cwd / fallback
+AdminAuth::isConfigured() false when no token set
+Application::database() forces buffered-query on the live handle (v1.8.29)
+bothub base_url points to OpenAI-compatible v2 path
+bothub catalogue lists gpt-5.5 (no vendor prefix)
+config exposes ≥3 active OpenRouter models for selection UI
+default_selected_models all reference active catalog entries
+fresh-install default_selected_models match the four documented picks
+fresh-install default_selected_models preserve documented order
+Inspector reports schema_ready=true with matching versions
+LogsController::list without admin returns admin_not_configured
+migration 007 creates app_config
+migration 007 declares @table-version app_config
+migration 007 exists
+migration 007 seeds table_version.skills
+migration 008 carries @table-version council_steps 1.8.28
+migration 008 exists
+migration 008 widens step_key column
+migration 009 carries @table-version user_profiles 1.0.0
+migration 009 carries @table-version users 1.0.0
+migration 009 creates user_profiles table
+migration 009 creates users table
+migration 009 exists
+migration 010 carries @table-version domain_presets 1.0.0
+migration 010 creates domain_presets table
+migration 010 exists
+migration file present: 001_initial.sql
+migration file present: 002_summary_mediumtext.sql
+migration file present: 003_model_response_cache.sql
+migration file present: 004_history_session_metadata.sql
+migration file present: 005_statistics_indexes.sql
+migrations/006_shared_sessions.sql ships
+openai/gpt-5.5 is available but NOT in default selection
+runtime catalogue marks openrouter|anthropic/claude-sonnet-4.6 active
+runtime catalogue marks openrouter|deepseek/deepseek-v4-pro active
+runtime catalogue marks openrouter|google/gemini-3.1-pro-preview active
+runtime catalogue marks openrouter|openai/gpt-5.5 active
+runtime catalogue marks openrouter|openai/gpt-chat-latest active
+safePathFor splits provider/model into hierarchical dirs
+safePathFor terminates in <sha>.json under the model dir
+SecurityController::save without admin token returns admin_not_configured
+SettingsController::get without admin returns admin_not_configured

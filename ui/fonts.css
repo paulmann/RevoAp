@@ -1,0 +1,136 @@
+/* =====================================================================
+ * RevoAp v2 — Local webfonts. No CDN, no third-party request.
+ *
+ * Everything below is served from `/assets/fonts/` on the same origin as
+ * the application. The files were vendored once at build time from the
+ * Fontsource packages (see tools/build-assets.mjs) and are committed to
+ * the repository, so:
+ *
+ *   - a fully air-gapped deployment renders identically to a connected one;
+ *   - no visitor IP, User-Agent or referrer ever reaches a font host;
+ *   - `font-src 'self'` in the CSP is sufficient — no allow-listing of
+ *     fonts.gstatic.com, which would otherwise be the only external origin
+ *     the console talks to.
+ *
+ * Subsetting
+ *   Inter is shipped in three subsets (latin, latin-ext, cyrillic) plus an
+ *   italic axis, and JetBrains Mono in latin + cyrillic. That covers
+ *   English, German and Russian — the three locales whose scripts are not
+ *   already on every device.
+ *
+ *   Chinese is NOT shipped as a webfont. A CJK subset of Inter's
+ *   counterpart is 5-15 MB, which is more than the rest of the front end
+ *   combined, and every device that can render Simplified Chinese already
+ *   has a good system face. The font stack therefore names the platform
+ *   fonts explicitly (PingFang SC on Apple, Microsoft YaHei on Windows,
+ *   Noto Sans CJK SC on Linux/Android) — see --font-sans in ui/tokens.css.
+ *
+ *   Noto Sans Arabic IS shipped, because Arabic coverage in system stacks
+ *   is far less reliable and the shaping quality varies enormously between
+ *   faces.
+ *
+ * Variable fonts
+ *   All three are variable (`wght 100..900`), so one file per subset covers
+ *   every weight the UI uses. That is ~180 KB total instead of ~700 KB for
+ *   the equivalent static set, and it makes `font-weight: 550` legal.
+ *
+ * `font-display: swap` is deliberate: the console is an operations tool,
+ * text must be readable immediately, and a moment of fallback rendering is
+ * preferable to invisible text on a slow link.
+ *
+ * unicode-range keeps the browser from downloading a subset it cannot use,
+ * which is the difference between 46 KB and 180 KB for an English-only
+ * operator.
+ *
+ * @project RevoAp   @since 2.0.0
+ * ===================================================================== */
+
+/* ---- Inter (UI face) ------------------------------------------------ */
+@font-face {
+    font-family: "Inter Variable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/assets/fonts/inter-latin-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+                   U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+                   U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Inter Variable";
+    font-style: italic;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/assets/fonts/inter-latin-wght-italic.woff2") format("woff2-variations");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+                   U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+                   U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "Inter Variable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/assets/fonts/inter-latin-ext-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+                   U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+                   U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: "Inter Variable";
+    font-style: italic;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/assets/fonts/inter-latin-ext-wght-italic.woff2") format("woff2-variations");
+    unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+                   U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF,
+                   U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+    font-family: "Inter Variable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/assets/fonts/inter-cyrillic-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+@font-face {
+    font-family: "Inter Variable";
+    font-style: italic;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/assets/fonts/inter-cyrillic-wght-italic.woff2") format("woff2-variations");
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+/* ---- JetBrains Mono (code, model ids, hashes, token counts) ---------- */
+@font-face {
+    font-family: "JetBrains Mono Variable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 800;
+    src: url("/assets/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+                   U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+                   U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+    font-family: "JetBrains Mono Variable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 800;
+    src: url("/assets/fonts/jetbrains-mono-cyrillic-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
+/* ---- Noto Sans Arabic (Arabic UI face) ------------------------------- */
+@font-face {
+    font-family: "Noto Sans Arabic Variable";
+    font-style: normal;
+    font-display: swap;
+    font-weight: 100 900;
+    src: url("/assets/fonts/noto-sans-arabic-arabic-wght-normal.woff2") format("woff2-variations");
+    unicode-range: U+0600-06FF, U+0750-077F, U+0870-088E, U+0890-0891, U+0898-08E1,
+                   U+08E3-08FF, U+200C-200E, U+2010-2011, U+204F, U+2E41, U+FB50-FDFF,
+                   U+FE70-FE74, U+FE76-FEFC, U+102E0-102FB, U+10E60-10E7E, U+10EFD-10EFF;
+}

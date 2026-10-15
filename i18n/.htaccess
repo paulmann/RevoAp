@@ -1,0 +1,10 @@
+# The catalogues are reachable ONLY through /api/i18n/{locale}, which applies
+# the locale enum whitelist, the admin gate for the write path, and the JSON
+# encoding flags. Serving them as static files would bypass all three and would
+# also let a directory listing enumerate every translation in one request.
+Require all denied
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
+Options -Indexes

@@ -1,0 +1,245 @@
+/* shared.css — read-only shared session view.
+   v1.8.33:
+     * Single-column layout (no two-column grid anywhere on the page).
+     * Final Answer card uses the same highlighted treatment as the
+       chat surface (.oc-final-answer).
+     * Theme-aware: every rule resolves to --color-* tokens defined in
+       /assets/css/themes/{light,dark}.css so the page works on both
+       themes without "black-on-black" inputs/text.
+     * Statistics card lives between Final Answer and Consensus
+       history; values are rendered as a responsive auto-fit grid.
+
+   Unlike the main app's content column — which fills its grid track —
+   this page keeps a centered reading measure. The operator-facing width
+   preference that used to tune it (data-ui-width: narrow 720 /
+   standard 960 / wide 1400) is gone, so the 960px below is a fixed
+   typographic choice for prose on a public document, not a setting.
+*/
+
+.oc-shared-body {
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+}
+
+.oc-shared-main {
+    max-width: 960px;
+    margin: 0 auto;
+    /* Fluid gutters: 1rem is right on a phone, 1.5rem reads better on a
+       desktop, and the 960px measure already keeps the column narrow —
+       no need for a fixed desktop padding. */
+    padding: 1.5rem clamp(1rem, 3vw, 1.5rem) 4rem;
+    display: block; /* explicit: no grid/two-column anywhere on shared */
+}
+
+.oc-shared-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    margin-right: 0.5rem;
+}
+
+.oc-shared-summary { margin: 0 0 1.5rem; }
+.oc-shared-summary h1 { margin: 0 0 0.25rem; font-size: 1.4rem; color: var(--color-text-primary); }
+.oc-shared-meta {
+    display: flex; flex-wrap: wrap; gap: 1.5rem;
+    margin: 1rem 0 0; padding: 0;
+}
+.oc-shared-meta dt {
+    font-size: 0.7rem; text-transform: uppercase;
+    color: var(--color-text-secondary); letter-spacing: 0.04em;
+}
+.oc-shared-meta dd { margin: 0.1rem 0 0; font-weight: 600; color: var(--color-text-primary); }
+
+.oc-shared-card {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+    margin: 0 0 1.2rem;
+    color: var(--color-text-primary);
+}
+.oc-shared-card h2 { margin: 0 0 0.5rem; font-size: 1.05rem; color: var(--color-text-primary); }
+
+.oc-shared-pre {
+    white-space: pre-wrap; word-wrap: break-word;
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    padding: 0.7rem 0.9rem; border-radius: 6px;
+    border: 1px solid var(--color-border);
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.85rem; line-height: 1.4; margin: 0;
+}
+
+/* Final answer card (matches main app highlight). */
+.oc-shared-final-section { margin: 0 0 1.2rem; }
+.oc-shared-final-section .oc-final-answer { color: var(--color-text-primary); }
+.oc-shared-final-section .oc-final-answer-body {
+    padding: 1rem 1.25rem 1.25rem;
+}
+.oc-shared-final-section .oc-final-answer-text,
+.oc-shared-final {
+    white-space: pre-wrap; line-height: 1.6;
+    color: var(--color-text-primary);
+}
+.oc-shared-final code {
+    background: color-mix(in srgb, var(--color-text-primary) 8%, transparent);
+    padding: 0.05rem 0.3rem; border-radius: 4px;
+}
+.oc-shared-final pre {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    padding: 0.7rem; border-radius: 6px; overflow-x: auto;
+    color: var(--color-text-primary);
+}
+
+/* Stats card (under Final Answer). */
+.oc-shared-stats-card {
+    border-color: color-mix(in srgb, var(--color-accent) 35%, var(--color-border));
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--color-accent) 7%, var(--color-bg-surface)) 0%,
+        var(--color-bg-surface) 80%);
+}
+.oc-shared-stats-header { margin: 0 0 0.6rem; }
+.oc-shared-stats-header h2 { margin: 0 0 0.2rem; }
+.oc-shared-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.6rem 1rem;
+    margin: 0;
+    padding: 0;
+}
+.oc-shared-stat {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.55rem 0.7rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+.oc-shared-stat-label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+    margin: 0;
+}
+.oc-shared-stat-value {
+    margin: 0;
+    font-weight: 700;
+    font-size: 1rem;
+    color: var(--color-text-primary);
+    overflow-wrap: anywhere;
+}
+.oc-shared-stats-models { margin-top: 0.9rem; }
+.oc-shared-stats-callouts {
+    list-style: none; padding: 0; margin: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.5rem;
+}
+.oc-shared-stats-callout {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-left: 3px solid var(--color-accent);
+    border-radius: 6px;
+    padding: 0.45rem 0.65rem;
+    display: flex; flex-direction: column; gap: 0.1rem;
+}
+.oc-shared-stats-callout-label {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+}
+.oc-shared-stats-callout-value { color: var(--color-text-primary); font-weight: 600; }
+.oc-mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85rem; }
+
+/* Consensus history card and steps. */
+.oc-shared-history-card { color: var(--color-text-primary); }
+.oc-shared-history { display: block; }
+.oc-shared-step {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.7rem 0.9rem;
+    margin: 0.5rem 0;
+    color: var(--color-text-primary);
+}
+.oc-shared-step header {
+    display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center;
+    margin: 0 0 0.4rem; font-size: 0.85rem;
+}
+.oc-shared-step .oc-shared-layer {
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    color: var(--color-accent);
+    padding: 0.05rem 0.4rem; border-radius: 4px; font-weight: 700;
+}
+.oc-shared-step .oc-shared-status { color: var(--color-text-secondary); font-size: 0.8rem; }
+.oc-shared-step .oc-shared-step-body {
+    white-space: pre-wrap; word-wrap: break-word; font-size: 0.85rem;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    padding: 0.5rem 0.7rem; border-radius: 4px;
+    color: var(--color-text-primary);
+}
+.oc-shared-step-responses { margin-top: 0.5rem; display: grid; gap: 0.45rem; }
+.oc-shared-step-response-row {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.5rem 0.65rem;
+}
+.oc-shared-step-response-head {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 0.5rem;
+    margin: 0 0 0.3rem;
+}
+.oc-shared-step-response-id { color: var(--color-accent); }
+.oc-shared-step-response {
+    white-space: pre-wrap; word-wrap: break-word; font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--color-text-primary);
+}
+
+.oc-shared-claims {
+    margin: 0.4rem 0 0;
+    padding-left: 1.1rem;
+    color: var(--color-text-primary);
+}
+
+.oc-shared-error {
+    background: color-mix(in srgb, var(--color-error) 10%, var(--color-bg-surface));
+    border: 1px solid var(--color-error);
+    border-radius: 6px; padding: 1rem; margin: 1rem 0;
+    color: var(--color-text-primary);
+}
+
+.oc-small { font-size: 0.85rem; }
+
+@media (max-width: 700px) {
+    .oc-shared-main { padding: 1rem 0.75rem 3rem; }
+    .oc-shared-meta { gap: 1rem; }
+}
+
+/* Share button (on the chat page). */
+.oc-share-button {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    padding: 0.35rem 0.8rem; border-radius: 5px;
+    background: color-mix(in srgb, var(--color-accent) 15%, transparent);
+    color: var(--color-accent);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+    font-size: 0.85rem; cursor: pointer; font-family: inherit;
+}
+.oc-share-button:hover {
+    background: color-mix(in srgb, var(--color-accent) 25%, transparent);
+}
+.oc-share-button[disabled] { opacity: 0.5; cursor: not-allowed; }
+.oc-share-result {
+    margin-top: 0.6rem; padding: 0.6rem 0.8rem;
+    background: var(--color-bg-secondary);
+    border-radius: 5px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-primary);
+    font-size: 0.85rem; word-break: break-all;
+}
+.oc-share-result code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }

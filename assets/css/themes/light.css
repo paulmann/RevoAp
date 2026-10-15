@@ -1,0 +1,67 @@
+:root[data-theme="light"] {
+    --color-bg-primary:    #ffffff;
+    --color-bg-secondary:  #f6f8fa;
+    --color-bg-surface:    #ffffff;
+
+    /* Counterpart of the same block in dark.css. A light theme cannot get
+       "lighter than white", so an elevated tile is a subtle grey surface
+       one step below the page. --color-bg-code holds the same value on
+       purpose: the palette's --color-warning is #9a6700, which only keeps
+       AA on a #f6f8fa-or-lighter surface (4.57:1 vs 4.37:1 on #f0f3f6) and
+       is used as text inside the reveal/code blocks. */
+    --color-bg-elevated:   #f6f8fa;
+    --color-bg-hover:      #eef1f4;
+    --color-bg-active:     #ddf4ff;
+    --color-bg-code:       #f6f8fa;
+    --color-text-code:     #1f2328;
+
+    /* Translucent status plaques. Alpha is far lower than in dark.css: the
+       palette's status colours are tuned for ~5:1 on white, so a same-hue
+       tint costs contrast fast in a light theme (measured, both themes:
+       theme-probe/contrast-solve.mjs).
+       v1.8.47: --color-accent-bg went 0.06 -> 0.04. --color-accent is the
+       link colour by contract and cannot change, so the only lever left for
+       accent text on an accent tint (the routing notice's link) is the tint
+       itself: 0.06 left it at 4.49:1 on the elevated card, 0.04 restores
+       4.62:1 while the plaque stays plainly visible. */
+    --color-accent-bg:     rgba(9, 105, 218, 0.04);
+    --color-success-bg:    rgba(26, 127, 55, 0.06);
+    --color-warning-bg:    rgba(154, 103, 0, 0.06);
+    --color-error-bg:      rgba(207, 34, 46, 0.06);
+
+    /* Counterpart of the same pair in dark.css. A light theme cannot go
+       "darker green" without losing the plaque's meaning, so the velvet
+       here is a very light green wash that still reads as a surface rather
+       than as the page. Measured worst gradient stop: text-primary
+       (#1f2328) 14.07:1, text-secondary (#636c76) 4.75:1 — both clear AA,
+       which is why the secondary token can stay as it is. */
+    --color-final-answer-bg:     #e8f5ec;
+    --color-final-answer-border: #8fce9f;
+
+    --color-border:        #d0d7de;
+    --color-text-primary:  #1f2328;
+    --color-text-secondary:#636c76;
+    --color-accent:        #0969da;
+    --color-accent-hover:  #0550ae;
+    /* v1.8.47: fill counterpart of --color-accent. In this theme the two
+       happen to hold the same blue (white on #0969da is 5.19:1, already AA),
+       but the token exists so a filled control never has to depend on the
+       link colour, and so the dark theme can use a much darker fill without
+       touching --color-accent. The hover value equals --color-accent-hover,
+       i.e. the light-theme primary button hovers exactly as it did before. */
+    --color-accent-fill:      #0969da;
+    --color-accent-fill-hover:#0550ae;
+    --color-success:       #1a7f37;
+    --color-warning:       #9a6700;
+    --color-error:         #cf222e;
+    /* v1.8.47: text-on-a-status-tint counterparts. The light palette's
+       status colours sit at ~5:1 on white, so a same-hue tint immediately
+       pushes them under AA: #1a7f37 on its own success plaque is 4.41:1 and
+       on a selected history row 4.46:1. The -text tokens are one step
+       darker so the plaque semantics survive at full tint strength.
+       --color-error already clears AA on its plaque (4.58:1), so its -text
+       counterpart keeps the same value. */
+    --color-success-text:  #14682c;
+    --color-error-text:    #cf222e;
+    --shadow-sm:           0 1px 3px rgba(0,0,0,.08);
+}

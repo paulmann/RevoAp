@@ -1,0 +1,201 @@
+/* Extensions tab - MD.Viewer install / update.
+ * State card + action bar + tables, styled to read as a sibling of the
+ * Logs / Security tabs. Shares oc-button / oc-alert / oc-input from
+ * app.css; only theme tokens are consumed here (see CssTokensTest). */
+
+.oc-extensions {
+    padding: 12px 0;
+    max-width: 1000px;
+}
+
+.oc-ext-title {
+    margin: 0 0 4px;
+    font-size: 1.15rem;
+}
+
+.oc-ext-subtitle {
+    margin: 0 0 14px;
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+}
+
+.oc-ext-card {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-surface);
+    padding: 12px 14px;
+    margin-bottom: 14px;
+}
+
+.oc-ext-card h3 {
+    margin: 0 0 10px;
+    font-size: 0.98rem;
+}
+
+.oc-ext-kv {
+    display: flex;
+    gap: 10px;
+    padding: 3px 0;
+    font-size: 0.88rem;
+}
+
+.oc-ext-kv-key {
+    flex: 0 0 140px;
+    color: var(--color-text-secondary);
+}
+
+.oc-ext-kv-val {
+    flex: 1 1 auto;
+    min-width: 0;
+    word-break: break-word;
+    color: var(--color-text-primary);
+}
+
+.oc-ext-kv-val.oc-ext-ok { color: var(--color-success-text); }
+.oc-ext-kv-val.oc-ext-bad { color: var(--color-error-text); }
+
+.oc-ext-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 14px;
+}
+
+.oc-ext-summary {
+    margin: 0 0 8px;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+
+.oc-ext-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.oc-ext-table th,
+.oc-ext-table td {
+    text-align: left;
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--color-border);
+    word-break: break-all;
+    vertical-align: top;
+}
+
+.oc-ext-table th {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-secondary);
+    font-weight: 600;
+}
+
+.oc-ext-table tbody tr:hover {
+    background: var(--color-bg-hover);
+}
+
+.oc-ext-warnings {
+    margin: 0 0 10px;
+}
+
+.oc-ext-warnings ul,
+.oc-ext-errors {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.oc-ext-errors {
+    margin-top: 8px;
+    color: var(--color-error-text);
+    font-size: 0.82rem;
+}
+
+/* .md.ini install menu: one row per setting, a value select on the right. */
+.oc-ext-settings-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 0 0 12px;
+}
+
+.oc-ext-setting {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 5px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.oc-ext-setting:last-child {
+    border-bottom: 0;
+}
+
+.oc-ext-setting-label {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-width: 0;
+    font-size: 0.86rem;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+
+.oc-ext-setting-key {
+    font-size: 0.74rem;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-secondary);
+    border-radius: 4px;
+    padding: 1px 5px;
+}
+
+.oc-ext-badge {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--color-accent);
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    padding: 1px 7px;
+}
+
+.oc-ext-select {
+    flex: 0 0 auto;
+    min-width: 150px;
+}
+
+/* The string settings (BROWSE_DIR) are free-text, so they get room to breathe
+ * without pushing the label off the row. */
+.oc-ext-text {
+    flex: 0 1 320px;
+    min-width: 150px;
+    font-family: inherit;
+}
+
+.oc-ext-kv-list {
+    margin: 0 0 12px;
+}
+
+@media (max-width: 720px) {
+    .oc-ext-kv {
+        flex-direction: column;
+        gap: 0;
+    }
+    .oc-ext-kv-key {
+        flex-basis: auto;
+    }
+    .oc-ext-setting {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .oc-ext-select {
+        width: 100%;
+    }
+    .oc-ext-text {
+        width: 100%;
+        flex-basis: auto;
+    }
+}

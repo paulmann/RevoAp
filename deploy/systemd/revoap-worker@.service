@@ -1,0 +1,92 @@
+# RevoAp Worker pool template (Phase 2) - one instantiated unit per process.
+#
+# Instantiate as revoap-worker@1, revoap-worker@2, …:
+#
+#   sudo cp deploy/systemd/revoap-worker@.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now revoap-worker@1 revoap-worker@2
+#   sudo systemctl status 'revoap-worker@*'
+#   sudo journalctl -u 'revoap-worker@*' -f -o cat | jq .
+#
+# Each instance runs with a stable --worker-id=worker-%i, so
+# GET /api/health/worker → running_workers lists readable ids
+# (worker-1, worker-2, …) instead of ephemeral hostname-pid pairs.
+# The DB row lock + FOR UPDATE SKIP LOCKED guarantees no two workers
+# can acquire the same job; MySQL 8.0+ / MariaDB 10.6+ required.
+
+[Unit]
+Description=RevoAp Worker %i - durable LLM pipeline runner
+Documentation=https://github.com/paulmann/AI-RevoAp
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+# Run as the same user the RevoAp PHP-FPM pool already runs as so
+# logs/cache/runtime directories stay writable.
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/revoap
+
+# Daemon mode, tempo driven by WORKER_SLEEP (below). --worker-id is
+# pinned to worker-%i for stable, human-readable entries in
+# /api/health/worker.
+ExecStart=/usr/bin/php /var/www/revoap/bin/revoap-worker.php --loop --sleep=${WORKER_SLEEP} --stale-after=${WORKER_STALE_AFTER} --max-jobs=${WORKER_MAX_JOBS} --backoff-base=${WORKER_BACKOFF_BASE} --backoff-max=${WORKER_BACKOFF_MAX} --max-attempts=${WORKER_MAX_ATTEMPTS} --worker-id=worker-%i
+
+# Worker settings. The pool reads them from the environment so the
+# poll tempo can be tuned without editing the unit. EnvironmentFile
+# (/etc/revoap/worker.env) overrides these inline defaults, e.g.
+# WORKER_SLEEP=5 shifts the worker to a quiet-hours tempo.
+Environment=WORKER_SLEEP=1
+Environment=WORKER_STALE_AFTER=300
+Environment=WORKER_MAX_JOBS=0
+Environment=WORKER_BACKOFF_BASE=30
+Environment=WORKER_BACKOFF_MAX=900
+Environment=WORKER_MAX_ATTEMPTS=3
+
+# Runtime environment: tempo controls (WORKER_SLEEP, WORKER_STALE_AFTER,
+# WORKER_MAX_JOBS, WORKER_BACKOFF_BASE, WORKER_BACKOFF_MAX,
+# WORKER_MAX_ATTEMPTS) plus secrets the bundled config.php may read at
+# boot (e.g. REVOAP_ADMIN_TOKEN). Never commit this file.
+EnvironmentFile=-/etc/revoap/worker.env
+
+# Pool memory budget. Initial guidance is ~4 MB per idle process
+# baseline - MEASURE the real RSS on the host first (systemctl show
+# revoap-worker@1 -p MemoryCurrent after a full drain, or
+# systemd-cgtop) and size the pool accordingly (workers ≈ peak queue /
+# mean job time; see docs/WorkerArchitecture.md for the sizing recipe).
+# Uncomment and tighten AFTER measuring - an unmeasured hard cap can
+# OOM-kill a worker in the middle of a long LLM pipeline:
+# MemoryMax=256M
+
+# Restart on any non-zero exit so a transient DB outage does not
+# require manual intervention. The systemd default 100ms RestartSec
+# would flood logs on a hard failure, so back it off to 5s.
+Restart=always
+RestartSec=5
+
+# Hardening. Drop privileges aggressively - the worker only needs
+# /var/www/revoap (read + cache write) and outbound HTTPS.
+NoNewPrivileges=true
+ProtectSystem=full
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectControlGroups=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+RestrictSUIDSGID=true
+LockPersonality=true
+
+# Stream logs to journald. The %i in SyslogIdentifier lets
+# `journalctl -u 'revoap-worker@*'` aggregate every instance.
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=revoap-worker-%i
+
+# Graceful shutdown: PipelineJobRunner reacts to SIGTERM by finishing
+# the current cycle, persisting state, then exiting.
+KillSignal=SIGTERM
+TimeoutStopSec=600
+
+[Install]
+WantedBy=multi-user.target

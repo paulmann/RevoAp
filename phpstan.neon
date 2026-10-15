@@ -1,0 +1,38 @@
+# PHPStan configuration.
+#
+# Level 6 with a baseline rather than a lower level without one. A level you
+# cannot reach yet is a level nobody runs; a baseline you have to consciously
+# add to is a ratchet that only moves one way.
+#
+#   composer analyse              # gate
+#   vendor/bin/phpstan analyse --generate-baseline   # after a deliberate refactor
+parameters:
+    level: 6
+    phpVersion: 80500
+    paths:
+        - src
+        - bin
+        - index.php
+        - config.php
+    bootstrapFiles:
+        - src/autoload.php
+    scanDirectories:
+        - src
+    excludePaths:
+        analyse:
+            # The bundled PSR-4 loader duplicates what Composer does; it is
+            # exercised on every request that runs without vendor/.
+            - src/autoload.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: true
+
+    # A dynamic config tree is the whole point of Config::get(); PHPStan cannot
+    # know the shape, and pretending otherwise produces a wall of noise that
+    # hides the real findings.
+    ignoreErrors:
+        -
+            message: '#^Parameter \#\d+ \$(?:opts|options|extra|context) of function .* expects#'
+            paths: [ src/Core/Config.php ]
+
+includes:
+    - phpstan-baseline.neon

@@ -1,0 +1,228 @@
+/* Copy-to-clipboard affordance for LLM answer blocks.
+ *
+ * Rendered by assets/js/copy-buttons.js next to a block's heading: a pair of
+ * buttons ("Copy MD" + "Copy") plus "Share", which publishes the block as a
+ * document, inside one .oc-copy-group wrapper. Uses
+ * only the theme variables declared in themes/light.css and
+ * themes/dark.css, so it inherits both themes without a dark-specific
+ * override: the buttons are quiet outline controls that turn green while
+ * the "Copied" state shows.
+ *
+ * Labels are always visible — the difference between "the text as shown"
+ * and "the text as a Markdown snippet" has to be readable before the
+ * click, not discovered afterwards — and the pairs inside a group are
+ * both in the DOM at all times; the .oc-copied class decides which of the
+ * glyph/label spans is visible. That keeps the module free of innerHTML
+ * and free of string rewriting on click.
+ */
+
+/* Holds a block's buttons in one flex item, so a header row's own layout
+ * (badge + label + status) is untouched by having two controls instead of
+ * one. */
+.oc-copy-group {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.oc-copy-btn {
+    /* Never let the button stretch a flex header or shrink to nothing. */
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.55rem;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    /* Keep the click target comfortable without visually bulking up. */
+    min-height: 1.75rem;
+    transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.oc-copy-btn:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border-color: var(--color-accent);
+}
+
+.oc-copy-btn:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+
+/* Mid-copy: the write is in flight. Non-interactive so a fast second
+ * click cannot queue a duplicate copy. */
+.oc-copy-btn[data-copy-state="copying"] {
+    cursor: progress;
+    opacity: 0.7;
+}
+
+/* Copied state — green confirmation, matching the completed status pill. */
+.oc-copy-btn.oc-copied {
+    color: var(--color-success);
+    border-color: var(--color-success);
+}
+
+.oc-copy-btn-glyph {
+    font-size: 0.85rem;
+    line-height: 1;
+}
+
+/* Idle/copied pair: exactly one of each is shown. The short label is the
+ * phone-width replacement for the full one, so it stays hidden by
+ * default. */
+.oc-copy-btn-glyph-done,
+.oc-copy-btn-text-done,
+.oc-copy-btn-text-short {
+    display: none;
+}
+
+.oc-copy-btn.oc-copied .oc-copy-btn-glyph:not(.oc-copy-btn-glyph-done),
+.oc-copy-btn.oc-copied .oc-copy-btn-text:not(.oc-copy-btn-text-done),
+.oc-copy-btn.oc-copied .oc-copy-btn-text-short {
+    display: none;
+}
+
+.oc-copy-btn.oc-copied .oc-copy-btn-glyph-done,
+.oc-copy-btn.oc-copied .oc-copy-btn-text-done {
+    display: inline;
+}
+
+/* ---------------------------------------------------------------------
+ * Shared live region (id="copy-status").
+ *
+ * Visually hidden but still exposed to assistive tech — the usual
+ * clip-path approach rather than display:none / visibility:hidden, both of
+ * which remove the node from the accessibility tree and would silence the
+ * announcement this region exists for.
+ * ------------------------------------------------------------------- */
+.oc-copy-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    border: 0;
+    clip-path: inset(50%);
+}
+
+/* ---------------------------------------------------------------------
+ * Narrow screens.
+ *
+ * Answer headers are flex rows that already hold a layer badge, a label
+ * and a status pill; at phone widths the full labels ("Copy MD") are the
+ * first thing worth sacrificing. Both buttons keep a visible label — the
+ * short one, "MD" / "Copy" — so they remain tellable apart instead of
+ * collapsing into two identical glyphs, and the full wording stays in
+ * aria-label for screen readers. Only the "Copied" confirmation drops to
+ * its glyph here, since it is momentary and its colour already carries
+ * the meaning.
+ * ------------------------------------------------------------------- */
+@media (max-width: 600px) {
+    .oc-copy-btn-text,
+    .oc-copy-btn-text-done {
+        display: none !important;
+    }
+
+    .oc-copy-btn:not(.oc-copied) .oc-copy-btn-text-short {
+        display: inline;
+    }
+
+    .oc-copy-btn {
+        padding: 0.2rem 0.45rem;
+    }
+}
+
+/* History answer heading row: keeps "Final answer" / "Original query" and
+ * their copy buttons on one line without disturbing the existing h3
+ * sizing. */
+.oc-history-answer-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.oc-history-answer-head > h3 {
+    margin: 0;
+}
+
+/* The stored-model-response row is `identity  tokens  [buttons]`: an auto
+ * margin on the group parks the buttons at the right edge and keeps the
+ * two text spans together on the left, which `space-between` alone would
+ * spread out across the row. */
+.oc-history-response-head > .oc-copy-group {
+    margin-left: auto;
+    align-self: center;
+}
+
+/* ---------------------------------------------------------------------
+ * Share button + its toast.
+ *
+ * "Share" sits in the same group as the copy pair and follows the same
+ * outline-control rules. It is the only control here that talks to the
+ * server, so it reuses the copy buttons' busy state
+ * ([data-copy-state="copying"]) while the request is in flight.
+ * ------------------------------------------------------------------- */
+.oc-copy-btn-share,
+.oc-copy-btn-download {
+    /* Same controls, slightly quieter: four buttons in a header row should
+     * not read as four equal calls to action. */
+    letter-spacing: 0.01em;
+}
+
+/* The toast is one node for the whole document, reused by every share. It is
+ * aria-hidden: the spoken message travels through the shared live region, so a
+ * screen reader hears one announcement instead of two. */
+.oc-share-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 1.25rem;
+    z-index: 60;
+    max-width: min(90vw, 44rem);
+    padding: 0.55rem 0.85rem;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgb(0 0 0 / 0.28);
+    overflow-wrap: anywhere;
+    opacity: 0;
+    transform: translate(-50%, 0.75rem);
+    pointer-events: none;
+    transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.oc-share-toast-visible {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+.oc-share-toast-ok {
+    border-color: var(--color-success);
+}
+
+.oc-share-toast-err {
+    border-color: var(--color-warning);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .oc-share-toast {
+        transition: opacity 0.01s linear;
+        transform: translate(-50%, 0);
+    }
+}

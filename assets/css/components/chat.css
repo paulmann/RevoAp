@@ -1,0 +1,393 @@
+.oc-chat {
+    margin-bottom: 1.75rem;
+}
+.oc-chat h1 { margin: 0 0 0.5rem 0; }
+.oc-chat-form {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+.oc-chat-form textarea {
+    width: 100%;
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.75rem 1rem;
+    font-family: inherit;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 96px;
+}
+.oc-chat-form textarea:focus {
+    outline: 2px solid var(--color-accent);
+    border-color: transparent;
+}
+.oc-chat-status { display: block; margin-top: 0.75rem; color: var(--color-text-secondary); font-size: 0.875rem; }
+.oc-chat-controls { display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+
+/* Pause / Reject pipeline-control buttons — disabled when no run is
+ * active. Reject uses the danger color so it stands out from Pause. */
+#chat-pause:not(:disabled) {
+    border-color: var(--color-accent);
+    color: var(--color-accent);
+}
+.oc-button-danger {
+    color: var(--color-error);
+}
+.oc-button-danger:not(:disabled) {
+    border-color: var(--color-error);
+}
+.oc-button-ghost:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.oc-control { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; color: var(--color-text-secondary); }
+.oc-control select {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+}
+/* Model selector — sidebar-constrained when collapsed, expands on focus.
+   The wrap MUST stay narrower than the sidebar column. The closed-state
+   label is truncated with ellipsis so long ids never overflow horizontally.
+*/
+.oc-model-selector {
+    display: grid;
+    gap: 0.4rem;
+    margin-bottom: 1rem;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+}
+.oc-model-row {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    position: relative;
+}
+/* ===== Model-list filter (v1.8.50) ====================================
+ * The pool widget's two filter controls. They are rendered by
+ * ModelSelector.render() (assets/js/model-selector.js) rather than living in
+ * the template, so they exist exactly when the widget does.
+ *
+ * The column is 280px wide (app.css .oc-main) and the invariant documented
+ * above applies here too: nothing inside .oc-model-selector may push the
+ * layout wider, hence min-width:0 on both the input and its row.
+ */
+.oc-model-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    width: 100%;
+    min-width: 0;
+}
+.oc-model-filter-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.25rem 0.45rem;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+}
+.oc-model-filter-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+.oc-model-filter-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+}
+.oc-model-filter-toggle input {
+    accent-color: var(--color-accent);
+}
+/* A pool member that does not match the filter: it stays selected and stays
+   visible — a filter must never quietly empty the consensus pool — and the
+   dot marks it as "outside what you are looking for". */
+.oc-model-row-filtered .oc-model-label {
+    text-decoration: underline dotted var(--color-text-secondary);
+}
+.oc-model-filter-note {
+    margin: 0;
+}
+.oc-model-filter-note:empty {
+    display: none;
+}
+
+.oc-model-provider {
+    flex: 0 0 auto;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.1rem 0.35rem;
+    line-height: 1.3;
+    max-width: 5.5rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.oc-model-select-wrap {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+/* The row trigger. It is a BUTTON, not a `<select>`, because a native select
+   draws its list inside the OS — where no search field can live. That is the
+   whole reason filtering the pool from a box *above* the rows never worked:
+   clicking the filter blurred the select and closed the very list it was
+   narrowing (see ModelCombobox in assets/js/model-selector.js). */
+.oc-model-trigger {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    position: relative; /* the caret below is positioned against the trigger */
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.35rem 1.4rem 0.35rem 0.5rem; /* right padding leaves room for the caret */
+    font-family: inherit;
+    font-size: 0.85rem;
+    text-align: left;
+    cursor: pointer;
+}
+.oc-model-trigger::after {
+    content: '▾';
+    position: absolute;
+    right: 0.5rem;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+}
+.oc-model-trigger:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-color: transparent;
+}
+.oc-model-trigger[aria-expanded="true"] {
+    border-color: var(--color-accent);
+}
+.oc-model-trigger:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+.oc-model-label {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.oc-model-add.oc-model-trigger { font-style: italic; }
+.oc-model-row-add .oc-model-label { font-style: italic; color: var(--color-text-secondary); }
+
+/* The row popup: ordinary DOM, positioned over the rows below so opening it
+   never pushes the sidebar layout around. */
+.oc-model-panel {
+    position: absolute;
+    top: calc(100% + 0.2rem);
+    left: 0;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    width: max-content;
+    min-width: 100%;
+    max-width: min(90vw, 340px);
+    padding: 0.4rem;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    box-shadow: var(--shadow-sm);
+}
+.oc-model-panel[hidden] { display: none; }
+.oc-model-search {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.25rem 0.45rem;
+    font: inherit;
+    font-size: 0.8rem;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+}
+.oc-model-search:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+    border-color: transparent;
+}
+/* The list scrolls. Its scrollbar belongs to the panel, so dragging it is a
+   click inside the panel and closes nothing. */
+.oc-model-options {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    max-height: 14rem;
+    overflow-y: auto;
+}
+.oc-model-option {
+    display: flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.25rem 0.35rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    color: var(--color-text-primary);
+    cursor: pointer;
+}
+.oc-model-option-model {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+.oc-model-option-provider {
+    flex: 0 0 auto;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0 0.25rem;
+}
+.oc-model-option-current {
+    color: var(--color-accent);
+}
+/* The keyboard highlight and the pointer hover paint the same surface, so
+   both ways of moving through the list look identical. */
+.oc-model-option-active,
+.oc-model-option:hover {
+    background: var(--color-bg-hover);
+}
+.oc-model-panel-note {
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+.oc-model-panel-note:empty { display: none; }
+
+.oc-model-remove {
+    flex: 0 0 auto;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.15rem 0.55rem;
+    cursor: pointer;
+    font-size: 1rem;
+    line-height: 1;
+}
+.oc-model-remove:hover { color: var(--color-error); border-color: var(--color-error); }
+
+/* Mobile: the panel may use the full width — the row itself still does not
+   overflow horizontally. */
+@media (max-width: 880px) {
+    .oc-model-panel {
+        max-width: 92vw;
+    }
+}
+.oc-small { font-size: 0.8rem; }
+.oc-skill-card { white-space: normal; }
+.oc-skill-roles { padding-left: 1.25rem; margin: 0.25rem 0 0.5rem 0; }
+.oc-skill-roles li { margin-bottom: 0.35rem; }
+
+/* ---------------------------------------------------------------------
+   Batch API run mode (Chat composer + batch lifecycle card).
+
+   The lifecycle card is deliberately styled like the "waiting" state and
+   not like a failure: a batch sitting on the provider for twenty minutes
+   is exactly the state that must not read as a problem. It uses
+   --color-warning/--color-warning-bg, the same pairing the Models tab
+   already uses for the `:batch` badge, so one visual language covers both
+   places a batch shows up.
+   --------------------------------------------------------------------- */
+.oc-control-batch {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+.oc-control-batch input[type="checkbox"] { margin: 0; }
+.oc-control-batch input[type="checkbox"]:disabled + span { color: var(--color-text-secondary); }
+
+.oc-batch-state {
+    display: block;
+    margin-top: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--color-warning);
+    border-radius: 6px;
+    background: var(--color-warning-bg);
+    color: var(--color-text-primary);
+    font-size: 0.85rem;
+    line-height: 1.45;
+}
+.oc-batch-state[hidden] { display: none; }
+/* Terminal batch states reuse the existing success/error pair so the card
+   agrees with the History pill for the same run. */
+.oc-batch-state[data-batch-state="completed"] {
+    border-color: var(--color-success);
+    background: var(--color-success-bg);
+}
+.oc-batch-state[data-batch-state="failed"],
+.oc-batch-state[data-batch-state="cancelled"] {
+    border-color: var(--color-error);
+    background: var(--color-error-bg);
+}
+.oc-batch-state-detail {
+    display: block;
+    margin-top: 0.25rem;
+    color: var(--color-text-secondary);
+}
+
+/* v1.9.3 - composer attachments: the file picker's chips. The limits mirror
+ * App\Pipeline\QueryAttachments; colours reuse the shared tokens. */
+.oc-chat-attachments {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+.oc-attachment-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.15rem 0.45rem;
+    font-size: 0.8rem;
+    background: var(--color-bg-secondary);
+}
+.oc-attachment-remove {
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font: inherit;
+    line-height: 1;
+    padding: 0 0.1rem;
+}
+.oc-attachment-remove:hover { color: var(--color-error); }
+.oc-attachment-note { color: var(--color-error); font-size: 0.8rem; }

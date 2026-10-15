@@ -1,0 +1,58 @@
+/* migration-banner.css — v1.8.27 top banner shown when the live DB's
+   schema versions do not match db/schema.sql. Clicking routes the
+   operator to Settings → Migrations; the destructive actions stay
+   admin-gated server-side. */
+
+.oc-migration-banner {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    background: linear-gradient(90deg, #b6651c, #d97706);
+    color: #fff;
+    font-size: 0.95rem;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    z-index: 100;
+}
+
+.oc-migration-banner:hover {
+    background: linear-gradient(90deg, #c8721f, #ed8409);
+}
+
+.oc-migration-banner-text {
+    flex: 1 1 auto;
+    text-align: left;
+}
+
+.oc-migration-banner-action {
+    flex: 0 0 auto;
+    appearance: none;
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.1);
+    color: inherit;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font: inherit;
+}
+
+.oc-migration-banner-action:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.oc-migration-banner-dismiss {
+    flex: 0 0 auto;
+    appearance: none;
+    border: none;
+    background: transparent;
+    color: inherit;
+    font-size: 1.2rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 2px 6px;
+}
+
+.oc-migration-banner-dismiss:hover {
+    opacity: 0.8;
+}

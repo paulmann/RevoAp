@@ -1,0 +1,110 @@
+
+server {
+    server_name revoap.com;
+    listen 192.168.31.31:443 ssl;
+    listen 192.168.31.31:443 quic;
+        
+
+    ssl_certificate "/var/www/httpd-cert/revoap.com_2026-08-26-17-34_55.crt";
+    ssl_certificate_key "/var/www/httpd-cert/revoap.com_2026-08-26-17-34_55.key";
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+
+    http2 on;
+
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    add_header Alt-Svc 'h3=":443"; ma=86400';
+
+    charset utf-8;
+    auth_basic "closed site";
+    auth_basic_user_file /var/www/revoap_com_usr3245/data/www/revoap.com/.httpauth;
+
+
+    gzip on;
+    gzip_min_length 1024;
+    gzip_proxied expired no-cache no-store private auth;
+    gzip_types text/css image/x-ico application/pdf image/jpeg image/png image/gif application/javascript application/x-javascript application/x-pointplus;
+    gzip_comp_level 9;
+    
+    set $subdomain "";
+    if ($host ~* ^([a-z0-9-\.]+)\.revoap.com) {
+        set $subdomain $1;
+    }
+    if ($host ~* ^www.revoap.com) {
+        set $subdomain "";
+    }
+    
+    set $root_path /var/www/revoap_com_usr3245/data/www/revoap.com//$subdomain;
+    
+
+    root $root_path;
+    disable_symlinks if_not_owner from=$root_path;
+
+    location / {
+        index index.php index.html;
+        try_files $uri $uri/ /index.php?$args;
+    }
+
+    location ~ \.php$ {
+        include /etc/nginx/fastcgi_params;
+        fastcgi_param HTTP_HOST $host;
+fastcgi_pass unix:/var/run/revoap.com.sock;
+        fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
+        fastcgi_param DOCUMENT_ROOT $realpath_root;
+     }
+
+
+    location ~* ^.+\.(jpg|jpeg|gif|png|svg|js|css|mp3|ogg|mpeg|avi|zip|gz|bz2|rar|swf|ico|7z|doc|docx|map|ogg|otf|pdf|ttf|tif|txt|wav|webp|woff|woff2|xls|xlsx|xml)$ {
+        try_files $uri $uri/ /index.php?$args;
+        expires 1d;
+    
+    }
+
+    location @fallback {
+        fastcgi_param HTTP_HOST $host;
+fastcgi_pass unix:/var/run/revoap.com.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include /etc/nginx/fastcgi_params;
+    }
+
+    include "/etc/nginx/fastpanel2-sites/revoap_com_usr3245/revoap.com.includes";
+    include /etc/nginx/fastpanel2-includes/*.conf;
+
+    error_log /dev/null crit;
+    access_log off;
+}
+server {
+    server_name revoap.com;
+
+    listen 192.168.31.31:80;
+    return 301 https://$host$request_uri;
+
+    error_log /dev/null crit;
+    access_log off;
+}
+
+server {
+    server_name www.revoap.com  *.revoap.com;
+
+    listen 192.168.31.31:80;
+    listen 192.168.31.31:443 ssl;
+    listen 192.168.31.31:443 quic;
+        
+
+    ssl_certificate "/var/www/httpd-cert/revoap.com_2026-08-26-17-34_55.crt";
+    ssl_certificate_key "/var/www/httpd-cert/revoap.com_2026-08-26-17-34_55.key";
+    add_header Strict-Transport-Security "max-age=31536000" always;
+
+
+    http2 on;
+
+    ssl_protocols TLSv1.1 TLSv1.2 TLSv1.3;
+    add_header Alt-Svc 'h3=":443"; ma=86400';
+
+    
+    return 301 https://revoap.com$request_uri;
+    
+
+    error_log /dev/null crit;
+    access_log off;
+}

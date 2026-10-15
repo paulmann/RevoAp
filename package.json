@@ -1,0 +1,30 @@
+{
+    "name": "@revoap/frontend",
+    "version": "2.0.0",
+    "private": true,
+    "description": "Build tooling for the RevoAp console. Tailwind CSS and the vendored front-end libraries are compiled/vendored at build time; the RESULTS are committed under assets/dist and assets/vendor so a deployment never needs Node, npm or network access.",
+    "type": "module",
+    "engines": {
+        "node": ">=20.11"
+    },
+    "scripts": {
+        "build": "node tools/build-css.mjs && node tools/build-assets.mjs",
+        "build:css": "node tools/build-css.mjs",
+        "build:css:dev": "node tools/build-css.mjs --dev",
+        "watch": "node tools/build-css.mjs --dev && echo 'run node tools/build-css.mjs again after editing ui/*.css'",
+        "check": "node tools/build-css.mjs --check",
+        "vendor": "node tools/vendor-assets.mjs"
+    },
+    "devDependencies": {
+        "@fontsource-variable/inter": "^5.2.5",
+        "@fontsource-variable/jetbrains-mono": "^5.2.5",
+        "@fontsource-variable/noto-sans-arabic": "^5.2.5",
+        "@tailwindcss/typography": "^0.5.15",
+        "autoprefixer": "^10.4.20",
+        "katex": "0.16.45",
+        "mermaid": "11.12.2",
+        "postcss": "^8.4.49",
+        "tailwindcss": "^3.4.17",
+        "tailwindcss-animate": "^1.0.7"
+    }
+}

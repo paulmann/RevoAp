@@ -1,0 +1,511 @@
+/* =====================================================================
+ * RevoAp v2 — application shell layout.
+ *
+ * Mobile-first, and the only stylesheet in the project that decides WHERE
+ * things sit. Everything else decides what things look like.
+ *
+ * The grid
+ * --------
+ *   < 768px    header (sticky) + main (scrolls) + bottom nav (fixed)
+ *   ≥ 768px    header (sticky) + [sidebar | main], sidebar sticky under the
+ *              header and independently scrollable
+ *   ≥ 1536px   identical, but `main` has no max-width at any breakpoint.
+ *
+ * Full width on wide screens is a hard requirement, not an oversight. There is
+ * deliberately no `max-inline-size` on `.app-main`, `.app-body` or `body`. The
+ * one place a measure is applied is `.prose-measure` (see ui/tailwind.css),
+ * which long-form answer text opts into — 78ch is the readable line length for
+ * Latin and Cyrillic text, and stretching a paragraph across 3440px makes it
+ * unreadable, but a 40-column admin table across the same width is exactly
+ * what the operator paid for the monitor for.
+ *
+ * Why `dvh` and not `vh`
+ * ----------------------
+ * On mobile Safari and Chrome the URL bar is part of `100vh`, so a shell sized
+ * to `100vh` overflows by ~60px and the bottom navigation ends up behind the
+ * browser chrome. `dvh` (dynamic viewport height) tracks the bar as it
+ * collapses. The `--vvh` custom property set by theme-boot.js is the fallback
+ * for the ~2 % of sessions on browsers without `dvh`.
+ *
+ * RTL
+ * ---
+ * Every directional property here is logical (`inset-inline-start`,
+ * `padding-inline`, `border-inline-end`). There is not one `left:` or
+ * `right:` in this file, which is what makes `dir="rtl"` mirror the entire
+ * shell — sidebar to the right, bottom nav order reversed — with no second
+ * stylesheet and no `[dir="rtl"]` overrides.
+ *
+ * @project RevoAp   @since 2.0.0
+ * ===================================================================== */
+
+@layer components {
+
+    /* ------------------------------------------------------------------
+     * The shell container.
+     *
+     * A flex column of exactly one viewport height, so the header and the
+     * bottom nav are fixed-size and `main` takes the remainder and scrolls
+     * on its own. Scrolling the DOCUMENT instead would push the header out
+     * of view and make the bottom nav scroll away mid-gesture, which is the
+     * single most disorienting thing a mobile shell can do.
+     * ---------------------------------------------------------------- */
+    #revoap-shell {
+        display: flex;
+        flex-direction: column;
+        block-size: 100dvh;
+        block-size: 100vh;                    /* fallback for browsers without dvh */
+        block-size: 100dvh;
+        inline-size: 100%;
+        max-inline-size: 100%;
+        overflow: clip;
+        background: var(--background);
+    }
+    @supports (block-size: 100dvh) {
+        #revoap-shell { block-size: 100dvh; }
+    }
+    @supports not (block-size: 100dvh) {
+        /* --vvh is written by theme-boot.js on load and on resize. */
+        #revoap-shell { block-size: var(--vvh, 100vh); }
+    }
+
+    /* ------------------------------------------------------------------
+     * Skip link. Hidden until focused; the first tab stop on the page.
+     * ---------------------------------------------------------------- */
+    .app-skiplink {
+        position: fixed;
+        inset-block-start: 0.5rem;
+        inset-inline-start: 0.5rem;
+        z-index: var(--z-command);
+        padding: 0.5rem 0.875rem;
+        border-radius: var(--radius-md);
+        background: var(--primary);
+        color: var(--primary-foreground);
+        font-size: var(--text-sm);
+        font-weight: 500;
+        text-decoration: none;
+        box-shadow: var(--shadow-lg);
+    }
+    .app-skiplink:focus {
+        color: var(--primary-foreground);
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+
+    /* ------------------------------------------------------------------
+     * Header
+     * ---------------------------------------------------------------- */
+    .app-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.5rem;
+        flex-shrink: 0;
+        block-size: var(--header-h-mobile);
+        padding-inline: 0.5rem;
+        border-block-end: 1px solid var(--border);
+        background: color-mix(in oklch, var(--background) 88%, transparent);
+        /* The blur is what keeps scrolled content legible behind a
+           semi-transparent header without a solid band of colour. */
+        backdrop-filter: blur(12px) saturate(180%);
+        -webkit-backdrop-filter: blur(12px) saturate(180%);
+        position: relative;
+        z-index: var(--z-header);
+    }
+    @media (min-width: 768px) {
+        .app-header {
+            block-size: var(--header-h);
+            padding-inline: 0.875rem;
+            gap: 0.75rem;
+        }
+    }
+
+    .app-brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        min-inline-size: 0;
+        padding: 0.25rem 0.375rem;
+        margin-inline-start: -0.375rem;
+        border-radius: var(--radius-md);
+        text-decoration: none;
+        color: var(--foreground);
+        font-weight: 650;
+        font-size: var(--text-base);
+        letter-spacing: -0.01em;
+        transition: background-color var(--duration-fast) var(--ease-out);
+    }
+    .app-brand:hover { color: var(--foreground); background: var(--accent); text-decoration: none; }
+    .app-brand-mark {
+        display: grid;
+        place-items: center;
+        inline-size: 1.625rem;
+        block-size: 1.625rem;
+        border-radius: var(--radius-sm);
+        background: linear-gradient(135deg, var(--primary), color-mix(in oklch, var(--primary) 55%, var(--chart-5)));
+        color: var(--primary-foreground);
+        flex-shrink: 0;
+        box-shadow: var(--shadow-xs);
+    }
+    /* Under 400px the wordmark is dropped: the mark alone is enough next to a
+       hamburger, and keeping the text forces the trailing controls to wrap. */
+    @media (max-width: 399px) {
+        .app-brand-text { display: none; }
+    }
+
+    /* The palette trigger doubles as the desktop search affordance. */
+    .app-command-trigger {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        inline-size: 100%;
+        block-size: 2rem;
+        padding-inline: 0.625rem;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+        background: var(--surface-sunken);
+        color: var(--foreground);
+        font-size: var(--text-sm);
+        cursor: pointer;
+        transition: border-color var(--duration-fast) var(--ease-out),
+                    background-color var(--duration-fast) var(--ease-out),
+                    box-shadow var(--duration-fast) var(--ease-out);
+    }
+    .app-command-trigger:hover {
+        border-color: var(--border-strong);
+        background: var(--card);
+    }
+    .app-command-trigger:focus-visible {
+        outline: none;
+        border-color: var(--ring);
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 22%, transparent);
+    }
+    .app-command-trigger > svg { color: var(--muted-foreground); flex-shrink: 0; }
+
+    /* ------------------------------------------------------------------
+     * Body: sidebar + main
+     * ---------------------------------------------------------------- */
+    .app-body {
+        display: flex;
+        flex: 1 1 auto;
+        min-block-size: 0;               /* without this a flex child cannot scroll */
+        inline-size: 100%;
+    }
+
+    /* ------------------------------------------------------------------
+     * Sidebar. Off-canvas below 768px (the drawer covers it), sticky rail
+     * at and above.
+     * ---------------------------------------------------------------- */
+    .app-sidebar {
+        display: none;
+        flex-shrink: 0;
+        inline-size: var(--sidebar-w);
+        border-inline-end: 1px solid var(--sidebar-border);
+        background: var(--sidebar);
+        color: var(--sidebar-foreground);
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;    /* don't chain to the document at the ends */
+        padding-block: 0.625rem;
+        scrollbar-width: thin;
+    }
+    @media (min-width: 768px) {
+        .app-sidebar { display: flex; flex-direction: column; }
+    }
+
+    /* Collapsed rail: icons only, labels removed rather than hidden with
+       `opacity:0` so they leave the accessibility tree too. A label that is
+       still announced but not visible is worse than one that is a tooltip. */
+    :root[data-sidebar="collapsed"] .app-sidebar { inline-size: var(--sidebar-w-collapsed); }
+    :root[data-sidebar="collapsed"] .app-nav-label,
+    :root[data-sidebar="collapsed"] .app-nav-group-label,
+    :root[data-sidebar="collapsed"] .app-nav-badge { display: none; }
+    :root[data-sidebar="collapsed"] .app-nav-item { justify-content: center; padding-inline: 0; }
+    :root[data-sidebar="collapsed"] .app-sidebar-footer { justify-content: center; }
+
+    .app-sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 0.875rem;
+        flex: 1 1 auto;
+        padding-inline: 0.5rem;
+    }
+
+    .app-nav-section { display: flex; flex-direction: column; gap: 0.125rem; }
+    .app-nav-group-label {
+        padding-inline: 0.5rem;
+        padding-block: 0.25rem;
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .app-nav-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+
+    .app-nav-item {
+        display: flex;
+        align-items: center;
+        gap: 0.625rem;
+        inline-size: 100%;
+        min-block-size: 2.125rem;
+        padding-inline: 0.5rem;
+        padding-block: 0.375rem;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: transparent;
+        color: var(--sidebar-foreground);
+        font-size: var(--text-sm);
+        font-weight: 450;
+        text-align: start;
+        text-decoration: none;
+        cursor: pointer;
+        position: relative;
+        transition: background-color var(--duration-fast) var(--ease-out),
+                    color var(--duration-fast) var(--ease-out);
+        -webkit-tap-highlight-color: transparent;
+    }
+    .app-nav-item > svg { flex-shrink: 0; color: var(--muted-foreground); transition: color var(--duration-fast) var(--ease-out); }
+    .app-nav-item:hover { background: var(--sidebar-accent); color: var(--sidebar-accent-foreground); }
+    .app-nav-item:hover > svg { color: var(--sidebar-accent-foreground); }
+    .app-nav-item:focus-visible {
+        outline: none;
+        box-shadow: inset 0 0 0 2px var(--sidebar-ring);
+    }
+    .app-nav-item[data-state="active"] {
+        background: color-mix(in oklch, var(--primary) 14%, transparent);
+        color: var(--primary);
+        font-weight: 550;
+    }
+    .app-nav-item[data-state="active"] > svg { color: var(--primary); }
+    /* The active marker is a bar on the inline-start edge. It survives the
+       collapse to a rail, where the background tint alone is easy to miss. */
+    .app-nav-item[data-state="active"]::before {
+        content: "";
+        position: absolute;
+        inset-inline-start: -0.5rem;
+        inset-block: 20%;
+        inline-size: 3px;
+        border-radius: var(--radius-full);
+        background: var(--primary);
+    }
+    :root[data-sidebar="collapsed"] .app-nav-item[data-state="active"]::before { inset-inline-start: 0; }
+
+    .app-nav-label {
+        flex: 1 1 auto;
+        min-inline-size: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .app-nav-badge { flex-shrink: 0; }
+    .app-nav-static { cursor: default; pointer-events: none; opacity: 0.8; }
+
+    .app-sidebar-footer {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        padding-inline: 0.5rem;
+        padding-block-start: 0.5rem;
+        margin-inline: 0.5rem;
+        margin-block-start: 0.5rem;
+        border-block-start: 1px solid var(--sidebar-border);
+    }
+
+    /* ------------------------------------------------------------------
+     * Main content region.
+     *
+     * `inline-size: 100%` with NO max-inline-size at any breakpoint — this is
+     * the requirement, stated here so it survives a future "let's centre this"
+     * refactor. The padding is the only inset, and it is fluid: 0.75rem on a
+     * phone, 1.5rem on a desktop, 2rem on an ultrawide, so a 3440px display
+     * does not get content glued to the bezel.
+     * ---------------------------------------------------------------- */
+    .app-main {
+        flex: 1 1 auto;
+        min-inline-size: 0;              /* lets a wide child shrink instead of overflowing */
+        inline-size: 100%;
+        max-inline-size: 100%;
+        overflow-y: auto;
+        overflow-x: hidden;
+        overscroll-behavior: contain;
+        padding: 0.75rem;
+        scroll-behavior: smooth;
+        -webkit-overflow-scrolling: touch;
+    }
+    @media (min-width: 768px)  { .app-main { padding: 1rem 1.25rem; } }
+    @media (min-width: 1280px) { .app-main { padding: 1.25rem 1.5rem; } }
+    @media (min-width: 1920px) { .app-main { padding: 1.5rem 2rem; } }
+    @media (min-width: 2560px) { .app-main { padding: 1.75rem 2.5rem; } }
+    .app-main:focus { outline: none; }
+    .app-main:focus-visible { outline: 2px solid var(--ring); outline-offset: -2px; }
+
+    /* Space for the bottom nav, which is fixed and would otherwise cover the
+       last row of a table. Applied to the scroll container's padding so the
+       scrollbar length stays correct. */
+    @media (max-width: 767px) {
+        .app-main { padding-block-end: calc(var(--footer-h) + 1rem); }
+    }
+
+    /* Legacy panel wrapper. The pre-v2 tab panels are MOVED into the new main
+       rather than rewritten, so their module state survives a re-render. */
+    #revoap-legacy-panels { display: contents; }
+    #revoap-legacy-panels > [data-tab-panel] { animation: fade-in var(--duration-base) var(--ease-out); }
+
+    /* ------------------------------------------------------------------
+     * Bottom navigation (mobile only).
+     *
+     * `env(safe-area-inset-bottom)` is not cosmetic: on an iPhone with a home
+     * indicator the last row of a table is otherwise unreachable behind the
+     * gesture bar.
+     * ---------------------------------------------------------------- */
+    .app-bottomnav {
+        display: block;
+        flex-shrink: 0;
+        position: fixed;
+        inset-block-end: 0;
+        inset-inline: 0;
+        z-index: var(--z-sidebar);
+        background: color-mix(in oklch, var(--background) 92%, transparent);
+        backdrop-filter: blur(16px) saturate(180%);
+        -webkit-backdrop-filter: blur(16px) saturate(180%);
+        border-block-start: 1px solid var(--border);
+        padding-block-end: env(safe-area-inset-bottom, 0);
+    }
+    @media (min-width: 768px) { .app-bottomnav { display: none; } }
+
+    .app-bottomnav-row {
+        display: grid;
+        grid-auto-flow: column;
+        grid-auto-columns: 1fr;
+        align-items: stretch;
+    }
+
+    .app-bottomnav-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 0.125rem;
+        min-block-size: var(--footer-h);
+        padding-block: 0.375rem;
+        padding-inline: 0.125rem;
+        border: 0;
+        background: transparent;
+        color: var(--muted-foreground);
+        font-size: 0.6875rem;
+        line-height: 1.2;
+        cursor: pointer;
+        position: relative;
+        transition: color var(--duration-fast) var(--ease-out);
+        -webkit-tap-highlight-color: transparent;
+        overflow: hidden;
+    }
+    .app-bottomnav-item > svg { flex-shrink: 0; }
+    .app-bottomnav-item:active { transform: scale(0.94); }
+    .app-bottomnav-item[data-state="active"] { color: var(--primary); }
+    .app-bottomnav-item[data-state="active"]::before {
+        content: "";
+        position: absolute;
+        inset-block-start: 0;
+        inset-inline: 28%;
+        block-size: 2px;
+        border-radius: var(--radius-full);
+        background: var(--primary);
+    }
+    .app-bottomnav-label {
+        max-inline-size: 100%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-weight: 500;
+    }
+
+    /* ------------------------------------------------------------------
+     * Worker status chip. The colour is driven by `data-lane`, which
+     * worker-status.js already writes, so no change was needed there.
+     * ---------------------------------------------------------------- */
+    .app-worker-chip { position: relative; }
+    .app-worker-dot {
+        display: block;
+        inline-size: 0.5rem;
+        block-size: 0.5rem;
+        border-radius: var(--radius-full);
+        background: var(--muted-foreground);
+        transition: background-color var(--duration-base) var(--ease-out),
+                    box-shadow var(--duration-base) var(--ease-out);
+    }
+    .app-worker-chip[data-lane="unknown"] .app-worker-dot { animation: pulse-soft 1.8s var(--ease-in-out) infinite; }
+    .app-worker-chip[data-lane="healthy"] .app-worker-dot,
+    .app-worker-chip[data-lane="ok"] .app-worker-dot,
+    .app-worker-chip[data-lane="idle"] .app-worker-dot {
+        background: var(--success);
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--success) 22%, transparent);
+    }
+    .app-worker-chip[data-lane="busy"] .app-worker-dot,
+    .app-worker-chip[data-lane="working"] .app-worker-dot {
+        background: var(--info);
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--info) 22%, transparent);
+        animation: pulse-soft 1.2s var(--ease-in-out) infinite;
+    }
+    .app-worker-chip[data-lane="backlog"] .app-worker-dot,
+    .app-worker-chip[data-lane="degraded"] .app-worker-dot,
+    .app-worker-chip[data-lane="stale"] .app-worker-dot {
+        background: var(--warning);
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--warning) 25%, transparent);
+    }
+    .app-worker-chip[data-lane="down"] .app-worker-dot,
+    .app-worker-chip[data-lane="error"] .app-worker-dot,
+    .app-worker-chip[data-lane="dead"] .app-worker-dot {
+        background: var(--destructive);
+        box-shadow: 0 0 0 3px color-mix(in oklch, var(--destructive) 25%, transparent);
+    }
+
+    /* ------------------------------------------------------------------
+     * Accent swatches in the appearance dialog.
+     * ---------------------------------------------------------------- */
+    .app-swatch {
+        display: grid;
+        place-items: center;
+        inline-size: 2rem;
+        block-size: 2rem;
+        border-radius: var(--radius-full);
+        border: 2px solid transparent;
+        background: var(--swatch, var(--primary));
+        color: var(--swatch-fg, oklch(1 0 0));
+        cursor: pointer;
+        transition: transform var(--duration-fast) var(--ease-spring),
+                    border-color var(--duration-fast) var(--ease-out);
+        padding: 0;
+    }
+    .app-swatch:hover { transform: scale(1.1); }
+    .app-swatch[aria-pressed="true"] {
+        border-color: var(--foreground);
+        box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--swatch, var(--primary));
+    }
+    .app-swatch:focus-visible { outline: 2px solid var(--ring); outline-offset: 3px; }
+    /* Each swatch reads its own hue AND its own contrasting foreground from
+       the tokens, so the check mark clears 3:1 (WCAG 1.4.11, non-text
+       contrast) on amber and cyan, where white measures 2.9:1 and 3.9:1. */
+    .app-swatch[data-accent="indigo"]  { --swatch: var(--accent-preview-indigo);  --swatch-fg: var(--accent-preview-indigo-fg); }
+    .app-swatch[data-accent="violet"]  { --swatch: var(--accent-preview-violet);  --swatch-fg: var(--accent-preview-violet-fg); }
+    .app-swatch[data-accent="blue"]    { --swatch: var(--accent-preview-blue);    --swatch-fg: var(--accent-preview-blue-fg); }
+    .app-swatch[data-accent="cyan"]    { --swatch: var(--accent-preview-cyan);    --swatch-fg: var(--accent-preview-cyan-fg); }
+    .app-swatch[data-accent="emerald"] { --swatch: var(--accent-preview-emerald); --swatch-fg: var(--accent-preview-emerald-fg); }
+    .app-swatch[data-accent="amber"]   { --swatch: var(--accent-preview-amber);   --swatch-fg: var(--accent-preview-amber-fg); }
+    .app-swatch[data-accent="rose"]    { --swatch: var(--accent-preview-rose);    --swatch-fg: var(--accent-preview-rose-fg); }
+    .app-swatch[data-accent="slate"]   { --swatch: var(--accent-preview-slate);   --swatch-fg: var(--accent-preview-slate-fg); }
+
+    /* ------------------------------------------------------------------
+     * Print. The chrome disappears; the content fills the page.
+     * ---------------------------------------------------------------- */
+    @media print {
+        #revoap-shell { display: block; block-size: auto; overflow: visible; }
+        .app-header, .app-sidebar, .app-bottomnav, .app-skiplink,
+        #revoap-overlay-root, .toast-viewport { display: none !important; }
+        .app-body { display: block; }
+        .app-main { overflow: visible; padding: 0; max-inline-size: 100%; }
+    }
+}

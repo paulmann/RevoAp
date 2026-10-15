@@ -1,0 +1,314 @@
+name: CI
+
+# The gate every push and PR has to pass. It runs the same three things
+# `composer check` runs locally — lint, static analysis, tests — plus two checks
+# that only make sense in CI:
+#
+#   * the committed CSS artefact is still what the sources produce (a stale
+#     artefact is a silent bug: the operator edits a token, sees no change, and
+#     concludes the token is unused);
+#   * nothing in the tree fetches a remote asset. The console is self-contained
+#     by design and `tests/LiveSmoke.php` asserts it against real bytes, but a
+#     grep over the tree is the cheap early warning.
+#
+# PHP matrix: 8.5 is the floor (composer requires ^8.5). 8.6 is included as soon
+# as it is available so a deprecation shows up before it becomes a blocker;
+# `continue-on-error` keeps it advisory until then.
+
+on:
+  push:
+    branches: [main, 'refactor/**', 'release/**']
+  pull_request:
+  workflow_dispatch:
+
+# One run per ref. A force-push during review should cancel the superseded run
+# rather than queue behind it.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------
+  # Syntax + deprecations. Cheap, so it runs first and gates everything else:
+  # there is no point paying for static analysis on a tree that does not parse.
+  # ---------------------------------------------------------------------
+  lint:
+    name: Lint (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.5']
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          # ext-intl is a `suggest`, not a `require`: App\I18n\Translator has a
+          # built-in fallback table. Testing WITH it is the stricter case, and
+          # the `php85-no-intl` job below covers the other one.
+          extensions: pdo, pdo_mysql, pdo_sqlite, curl, mbstring, intl, redis
+          coverage: none
+          tools: composer:v2
+
+      - name: php -l over every first-party file
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS= read -r -d '' f; do
+            if ! out=$(php -l "$f" 2>&1); then
+              echo "$f: $out"; fail=1
+            fi
+          done < <(find src bin tests index.php config.php -name '*.php' -print0)
+          [ "$fail" -eq 0 ] || { echo "::error::syntax errors found"; exit 1; }
+
+      # E_DEPRECATED is a release blocker, not a warning. PHP 8.5 deprecated
+      # curl_close(), Reflection*::setAccessible() and the PDO::*_ATTR_*
+      # driver constants; merely READING one of those constants raises, so the
+      # usual `if (defined(...))` guard does not help. This step is what keeps
+      # them from coming back.
+      - name: Assert zero deprecations across the test suite
+        run: |
+          set -uo pipefail
+          log=$(mktemp)
+          for t in tests/*Test.php; do
+            php -d error_reporting=E_ALL -d display_errors=1 "$t" >>"$log" 2>&1 || true
+          done
+          n=$(grep -c 'Deprecated:' "$log" || true)
+          if [ "$n" -gt 0 ]; then
+            echo "::error::$n deprecation(s) emitted under PHP ${{ matrix.php }}"
+            grep 'Deprecated:' "$log" | sed 's/^/  /' | sort -u | head -30
+            exit 1
+          fi
+          echo "0 deprecations"
+
+  # The same suite without ext-intl, because it is optional and a large share of
+  # shared hosts lack it. A console that only formats dates correctly with intl
+  # installed is a console that is broken on most cheap hosting.
+  lint-no-intl:
+    name: Lint + i18n (PHP 8.5, no ext-intl)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo, pdo_sqlite, curl, mbstring
+          coverage: none
+      - name: ext-intl is absent
+        # Block scalar, not a flow scalar: the ternary contains ` : `, which an
+        # unquoted YAML value reads as a nested mapping.
+        run: |
+          php -r 'exit(extension_loaded("intl") ? 1 : 0);'
+      - name: The i18n fallback path produces locale-shaped output
+        run: php tests/I18nTest.php
+
+  # ---------------------------------------------------------------------
+  # The full standalone suite. These tests are hand-rolled and need no PHPUnit,
+  # which is why they run on a bare interpreter: the project has to be testable
+  # on a shared host with no composer install.
+  # ---------------------------------------------------------------------
+  test:
+    name: Test suite (PHP ${{ matrix.php }})
+    runs-on: ubuntu-24.04
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.5']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo, pdo_mysql, pdo_sqlite, curl, mbstring, intl
+          coverage: none
+
+      # Six tests in this suite are environment-dependent by construction: they
+      # need provider API keys, the consolidated migrations 001-010 (folded into
+      # db/schema.sql in v1.8.x), or a deployment-local .config.php. They fail on
+      # a clean checkout and always have; the list is asserted explicitly so a
+      # NEW failure cannot hide behind them.
+      - name: Run the suite and compare against the known-environmental set
+        run: |
+          set -uo pipefail
+          PHP=php OUT=/tmp/run.txt bash tools/run-tests.sh
+          tail -n 6 /tmp/run.txt
+          expected="AdminKeyProtectionTest.php DocumentShareTest.php ModelsActualizeTest.php ParallelChatDispatcherCurlFallbackTest.php PromptCacheTest.php"
+          actual=$(grep '^FAILED:' /tmp/run.txt | sed 's/^FAILED: //' | tr ' ' '\n' | grep -v '^SmokeTest.php$' | sort | tr '\n' ' ' | xargs)
+          want=$(echo "$expected" | tr ' ' '\n' | sort | tr '\n' ' ' | xargs)
+          if [ "$actual" != "$want" ]; then
+            echo "::error::failure set changed"
+            echo "  expected: $want"
+            echo "  actual:   $actual"
+            exit 1
+          fi
+          echo "only the known environment-dependent tests failed"
+
+      - name: SmokeTest — CDN and CSP assertions
+        # SmokeTest fails on a clean checkout for the model-catalogue and
+        # migration-file reasons above, but its v2.0.0 security assertions are
+        # independent of those and must pass. Run it and require the specific
+        # checks.
+        run: |
+          set -uo pipefail
+          out=$(php tests/SmokeTest.php 2>&1 || true)
+          for needle in \
+            'no shipped file fetches a remote asset' \
+            'the CSP is self-only for script-src plus a nonce' \
+            'no external origin appears anywhere in the default policy' \
+            'Mermaid is vendored locally' \
+            'the vendored KaTeX files actually ship' \
+            'schema.sql declares 36 tables after the v2.1.0 multi-user foundation'
+          do
+            if grep -q "FAIL $needle" <<<"$out"; then
+              echo "::error::$needle"; exit 1
+            fi
+            grep -q "ok  $needle" <<<"$out" || { echo "::error::$needle did not run"; exit 1; }
+          done
+          echo "all v2.0.0 security assertions passed"
+
+      - name: Upload the run log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-run-php${{ matrix.php }}
+          path: /tmp/run.txt
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------
+  # Static analysis.
+  # ---------------------------------------------------------------------
+  analyse:
+    name: PHPStan
+    runs-on: ubuntu-24.04
+    needs: lint
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo, pdo_mysql, curl, mbstring, intl
+          coverage: none
+          tools: composer:v2
+      - run: composer install --no-interaction --prefer-dist --no-progress
+      - run: composer analyse -- --no-progress
+
+  # ---------------------------------------------------------------------
+  # Catalogues: completeness, plural forms, placeholder parity.
+  # ---------------------------------------------------------------------
+  i18n:
+    name: i18n catalogues
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.5', extensions: mbstring, intl, coverage: none }
+      - run: php bin/revoap-i18n.php lint
+      - run: php bin/revoap-i18n.php coverage
+      # Every key referenced in code must exist in en.json, otherwise the UI
+      # renders the raw key text.
+      - run: php bin/revoap-i18n.php extract
+
+  # ---------------------------------------------------------------------
+  # Front-end build: the committed artefact must match the sources, and the
+  # compiled CSS must contain no external origin.
+  # ---------------------------------------------------------------------
+  assets:
+    name: Front-end build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - run: npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+      - name: The committed stylesheet is up to date
+        run: node tools/build-css.mjs --check
+      - name: The compiled CSS references no external origin
+        run: |
+          set -euo pipefail
+          if grep -Eq 'https?://(cdn\.|unpkg|cdnjs|fonts\.(googleapis|gstatic))' assets/dist/revoap.css; then
+            echo "::error::an external origin appears in the compiled stylesheet"
+            grep -Eon 'https?://[^)"'"'"' ]+' assets/dist/revoap.css | head
+            exit 1
+          fi
+          echo "clean"
+      - name: No JS/HTML/CSS source fetches a remote asset
+        run: |
+          set -euo pipefail
+          bad=0
+          while IFS= read -r f; do
+            case "$f" in *node_modules*|*/tests/*|*/docs/*|*/vendor/*) continue;; esac
+            if grep -Eq '(src|href)="https?://[^"]+\.(js|mjs|css|woff2?|ttf)"' "$f" \
+               || grep -Eq 'url\(["'"'"']?https?://' "$f" \
+               || grep -Eq '@import ["'"'"']https?://' "$f"; then
+              echo "::error::$f loads a remote asset"; bad=1
+            fi
+          done < <(find assets ui index.php -type f \( -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.html' \) 2>/dev/null)
+          exit "$bad"
+      - name: Every JS module parses
+        run: |
+          set -euo pipefail
+          tmp=$(mktemp -d)
+          for f in $(find assets/js ui -name '*.js' -o -name '*.mjs' | sort); do
+            cp "$f" "$tmp/$(echo "$f" | tr '/' '_').mjs"
+            node --check "$tmp/$(echo "$f" | tr '/' '_').mjs"
+          done
+          echo "all modules parse"
+
+  # ---------------------------------------------------------------------
+  # End-to-end against a real server. This is the job that found the three
+  # security defects the unit suites could not see (the open admin gate, the
+  # missing woff2 MIME type, and the statically-served templates): it asserts on
+  # response bytes, not on source text.
+  # ---------------------------------------------------------------------
+  live:
+    name: Live HTTP smoke
+    runs-on: ubuntu-24.04
+    needs: [lint, assets]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: pdo, pdo_sqlite, curl, mbstring, intl
+          coverage: none
+      - name: Boot the app
+        run: |
+          php -S 127.0.0.1:8123 -t . >/tmp/server.log 2>&1 &
+          for i in $(seq 1 40); do
+            if php -r 'exit(@file_get_contents("http://127.0.0.1:8123/api/health") === false ? 1 : 0);'; then
+              echo "up after ${i} tries"; exit 0
+            fi
+            sleep 0.5
+          done
+          echo "::error::server did not come up"; cat /tmp/server.log; exit 1
+      - name: Run the live smoke test
+        run: php tests/LiveSmoke.php
+      - name: Server log
+        if: always()
+        run: tail -n 60 /tmp/server.log || true
+
+  # ---------------------------------------------------------------------
+  # Advisory: the next PHP minor. Not a blocker until it is released, but a
+  # deprecation should surface here months before it becomes one.
+  # ---------------------------------------------------------------------
+  next-php:
+    name: PHP next (advisory)
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.6'
+          extensions: pdo, pdo_sqlite, curl, mbstring
+          coverage: none
+      - run: php bin/revoap-i18n.php lint
+      - run: php tests/PdoCompatTest.php
+      - run: php tests/ModelFallbackTest.php

@@ -1,0 +1,17 @@
+{
+    "slug": "auto-selector",
+    "name": "Automatic Skill Selector",
+    "description": "Before the run, one configured model picks the best existing skill for the task; when nothing fits or the topic is narrow, it reads arXiv and builds a new skill with its own roles and sources. The council then runs on the Default configuration's models.",
+    "is_system": true,
+    "tags": ["consensus", "auto", "selector"],
+    "auto_selector": true,
+    "stages": [
+        {"title": "Skill scout", "text": "The decision model reads the task and the catalogue of every skill - bundled and kept - and answers with the best fit, or asks for a new skill when none genuinely covers the subject."},
+        {"title": "arXiv research", "text": "For a new skill the selector searches arXiv for the task's literature, ranks the papers by relevance and hands the top ones to the role generator."},
+        {"title": "Skill author", "text": "The role generator writes the new skill's roles, synthesis prompt and sources from that reading, and keeps it in the library like any drafted skill."},
+        {"title": "Role pick", "text": "The single role that best fits this exact task is chosen and moves to the front of the council's participant order."},
+        {"title": "Council", "text": "The picked or freshly built skill runs the regular multi-model consensus - on the Default configuration's models, whatever the composer's current pool is."}
+    ],
+    "roles": [],
+    "sources": []
+}

@@ -1,0 +1,566 @@
+<!doctype html>
+<!--
+  RevoAp v2 — application shell.
+
+  Two things about this document are load-bearing and easy to break:
+
+  1. The `<script nonce>` in <head> runs BEFORE any stylesheet. It writes
+     `class="dark"`, `data-theme`, `data-accent`, `data-density`, `lang` and
+     `dir` onto <html>. Anything that defers it — moving it below the
+     <link>s, making it `type="module"`, giving it `defer` — reintroduces a
+     flash of the wrong theme and, for Arabic, a whole-page layout flip after
+     first paint. The server also renders those same attributes on the <html>
+     tag from the cookie, so a browser with JS disabled still gets the right
+     theme and direction; the inline script only refines `system` and `?lang=`.
+
+  2. Every asset is same-origin. There is no CDN reference anywhere in this
+     file: KaTeX, Mermaid and the fonts are vendored under /assets/vendor and
+     /assets/fonts, and the stylesheet is a committed build artefact under
+     /assets/dist. The Content-Security-Policy in App\Http\Response enforces
+     it — `script-src 'self' 'nonce-…'` with no allow-listed origin — so a
+     reintroduced CDN tag would be blocked at runtime rather than silently
+     working in dev and failing an audit. See docs/NO_CDN.md.
+
+  The pre-v2 tab panels are kept inside #revoap-legacy-panels and are MOVED
+  into the new shell by assets/js/shell.js rather than being recreated, so
+  every existing panel module (settings.js, models.js, history.js, …) keeps
+  working with its own state intact. Migration status per panel is tracked in
+  docs/MIGRATION_UI.md.
+-->
+<html lang="{{locale}}" dir="{{locale_dir}}"
+      data-theme="{{resolved_theme}}"
+      data-color-mode="{{ui_theme}}"
+      data-accent="{{ui_accent}}"
+      data-density="{{ui_density}}"
+      data-sidebar="{{ui_sidebar}}"
+      data-locale="{{locale}}"
+      data-ui-theme-default="{{ui_theme}}"
+      data-ui-accent-default="{{ui_accent}}"
+      data-ui-density-default="{{ui_density}}">
+<head>
+    <meta charset="utf-8">
+    <!-- `viewport-fit=cover` is what makes env(safe-area-inset-*) non-zero on
+         notched devices; without it the bottom navigation sits under the home
+         indicator on an iPhone. -->
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#232329" media="(prefers-color-scheme: dark)">
+    <meta name="description" content="{{app_description}}">
+    <meta name="robots" content="noindex, nofollow, noarchive">
+
+    <title>{{title}}</title>
+
+    <meta name="oc-app-version" content="{{app_version}}">
+    <meta name="oc-build" content="{{build_id}}">
+    <meta name="oc-log-to-console" content="{{log_to_console}}">
+    <meta name="oc-app-debug" content="{{app_debug}}">
+    <meta name="oc-ui-theme" content="{{ui_theme}}">
+    <meta name="oc-locale" content="{{locale}}">
+    <meta name="oc-locale-dir" content="{{locale_dir}}">
+    <meta name="oc-execution-mode" content="{{execution_mode}}">
+    <meta name="oc-job-worker-warning-seconds" content="{{job_worker_warning_seconds}}">
+    <!-- `oc-admin-protection` is `true` when Protect_Settings_by_Admin_Key is
+         1 (or absent) and the operator surface asks for .admin.key; `false`
+         means the surface is open and the notice below is shown. Read by
+         assets/js/admin-ui.js so the notice also appears when the page was
+         served from cache with a stale meta. -->
+    <meta name="oc-admin-protection" content="{{admin_protection}}">
+    <meta name="oc-admin-protection-key" content="{{admin_protection_flag}}">
+
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v={{asset_version}}">
+    <link rel="alternate icon" type="image/svg+xml" href="/favicon.ico?v={{asset_version}}">
+    <link rel="manifest" href="/manifest.webmanifest?v={{asset_version}}">
+
+    <!-- =================================================================
+         Appearance bootstrap. INLINE, non-deferred, nonce'd, first in head.
+         The source lives in assets/js/theme-boot.js and is inlined by
+         renderHome() so there is exactly one copy of the logic; the nonce is
+         the same one the CSP allows.
+         ================================================================= -->
+    <script nonce="{{csp_nonce}}">{{theme_boot_inline|raw}}</script>
+
+    <!-- =================================================================
+         Styles. One compiled Tailwind/shadcn bundle (committed artefact, no
+         build step at deploy time) + the vendored KaTeX sheet + the legacy
+         `oc-*` component stylesheets, which read the bridged --color-*
+         tokens from ui/tokens.css §5.
+         ================================================================= -->
+    <link rel="stylesheet" href="/assets/dist/revoap.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/vendor/katex/katex.min.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/app.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/pipeline.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/stats.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/chat.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/settings.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/models.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/logs.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/extensions.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/security.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/history.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/skills.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/statistic.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/api.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/help.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/shared.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/migration-banner.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/worker-status.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/copy-buttons.css?v={{asset_version}}">
+
+    <!-- KaTeX and Mermaid: vendored, same-origin. The v1 layout loaded both
+         from cdn.jsdelivr.net with Subresource Integrity; SRI proves the bytes
+         were not altered in transit but does nothing about the CDN being
+         unreachable, about leaking the operator's IP and query timing to a
+         third party, or about an upstream account compromise. Local copies
+         remove all three failure modes and let the CSP be `'self'`-only. -->
+    <script defer src="/assets/vendor/katex/katex.min.js?v={{asset_version}}"></script>
+    <script defer src="/assets/vendor/katex/contrib/auto-render.min.js?v={{asset_version}}"></script>
+</head>
+<body>
+    <!-- =================================================================
+         The v2 shell mounts here. assets/js/shell.js builds the header, the
+         sidebar, the bottom navigation and the command palette into this
+         node, and MOVES #revoap-legacy-panels into its <main> so the
+         pre-v2 tab bodies keep their own module state.
+
+         The <noscript> block is inside the shell host rather than in <body>
+         root so that it is removed by shell.js's initial clear() — a JS-enabled
+         browser never sees it, and a JS-disabled one sees it in place of an
+         empty page instead of underneath one.
+         ================================================================= -->
+    <div id="revoap-shell">
+        <!-- =============================================================
+             Server-rendered chrome.
+
+             The header, the tab triggers and the protection notice are
+             emitted by PHP, not built by JavaScript, for three reasons:
+
+               1. Progressive enhancement. With scripting disabled the
+                  panels are still reachable through these buttons, and the
+                  "not protected by an admin key" disclosure — which is the
+                  one message that must never depend on a script running —
+                  is visible.
+               2. First paint. A JS-built header means the page renders
+                  empty and then grows a header, which shifts every panel
+                  down by 56px after load.
+               3. The tab contract. Every pre-v2 panel module binds to a
+                  `[data-tab="…"]` trigger and shows the matching
+                  `[data-tab-panel]`. assets/js/shell.js ADOPTS these
+                  triggers (moves them into its sidebar / bottom bar) rather
+                  than inventing parallel ones, so there is exactly one set
+                  of ids and one active-state mechanism.
+
+             The registry below is the single source of truth for which
+             destinations exist; shell.js reads it and only falls back to its
+             own built-in list when the registry is absent.
+             ============================================================= -->
+        <header class="oc-header app-header" id="oc-app-header">
+            <a class="oc-brand app-brand" id="oc-brand-link" href="#chat"
+               aria-label="{{app_name}}">{{app_name}}</a>
+
+            <!-- The tab registry. Every trigger carries `data-tab` (the
+                 contract the panel modules bind to), a stable `id` (which the
+                 per-tab status endpoints and the test suite reference), and
+                 starts `hidden` when config.php decides at runtime whether
+                 the tab exists at all. shell.js unhides and relocates them
+                 once /api/tabs answers. -->
+            <nav class="oc-nav" id="oc-tab-registry" aria-label="{{nav_main}}">
+                <button type="button" class="oc-tab oc-tab-active" data-tab="chat" id="oc-tab-chat">{{nav_chat}}</button>
+                <button type="button" class="oc-tab" data-tab="dashboard" id="oc-tab-dashboard" hidden>{{nav_dashboard}}</button>
+                <button type="button" class="oc-tab" data-tab="models" id="oc-tab-models" hidden>{{nav_models}}</button>
+                <button type="button" class="oc-tab" data-tab="settings" id="oc-tab-settings" hidden>{{nav_settings}}</button>
+                <button type="button" class="oc-tab" data-tab="history" id="oc-tab-history" hidden>{{nav_history}}</button>
+                <button type="button" class="oc-tab" data-tab="skills" id="oc-tab-skills" hidden>{{nav_skills}}</button>
+                <button type="button" class="oc-tab" data-tab="fallback" id="oc-tab-fallback" hidden>{{nav_fallback}}</button>
+                <button type="button" class="oc-tab" data-tab="queue" id="oc-tab-queue" hidden>{{nav_queue}}</button>
+                <button type="button" class="oc-tab" data-tab="users" id="oc-tab-users" hidden>{{nav_users}}</button>
+                <button type="button" class="oc-tab" data-tab="audit" id="oc-tab-audit" hidden>{{nav_audit}}</button>
+                <button type="button" class="oc-tab" data-tab="budgets" id="oc-tab-budgets" hidden>{{nav_budgets}}</button>
+                <button type="button" class="oc-tab" data-tab="scheduler" id="oc-tab-scheduler" hidden>{{nav_scheduler}}</button>
+                <button type="button" class="oc-tab" data-tab="notifications" id="oc-tab-notifications" hidden>{{nav_notifications}}</button>
+                <button type="button" class="oc-tab" data-tab="backup" id="oc-tab-backup" hidden>{{nav_backup}}</button>
+                <button type="button" class="oc-tab" data-tab="localization" id="oc-tab-localization" hidden>{{nav_localization}}</button>
+                <button type="button" class="oc-tab" data-tab="system" id="oc-tab-system" hidden>{{nav_system}}</button>
+                <button type="button" class="oc-tab" data-tab="api" id="oc-tab-api" hidden>{{nav_api}}</button>
+                <button type="button" class="oc-tab" data-tab="statistic" id="oc-tab-statistic" hidden>{{nav_statistic}}</button>
+                <button type="button" class="oc-tab" data-tab="logs" id="oc-tab-logs" hidden>{{nav_logs}}</button>
+                <button type="button" class="oc-tab" data-tab="extensions" id="oc-tab-extensions" hidden>{{nav_extensions}}</button>
+                <button type="button" class="oc-tab" data-tab="security" id="oc-tab-security" hidden>{{nav_security}}</button>
+                <button type="button" class="oc-tab" data-tab="help" id="oc-tab-help">{{nav_help}}</button>
+            </nav>
+
+            <div class="oc-nav" id="oc-header-controls">
+                <!-- v1.8.45 worker-status indicator. Kept with its original id
+                     so worker-status.js finds it unchanged; the shell restyles
+                     it through .app-worker-chip. -->
+                <button id="oc-worker-status" type="button" class="oc-button-ghost oc-worker-status app-worker-chip"
+                        data-lane="unknown" aria-label="{{worker_status}}" aria-haspopup="true"
+                        aria-expanded="false" title="{{worker_tooltip}}">
+                    <span class="oc-worker-status-dot app-worker-dot" aria-hidden="true"></span>
+                </button>
+                <button id="theme-toggle" type="button" class="oc-button-ghost"
+                        data-theme-toggle aria-label="{{theme_toggle}}"
+                        data-label-all="{{theme_toggle}}">◐</button>
+                <select id="oc-locale-select" class="oc-select" data-locale-select
+                        aria-label="{{locale_label}}" title="{{locale_label}}"></select>
+            </div>
+        </header>
+
+        <!-- v1.8.60 — "Settings are not protected by an admin key".
+             Rendered server-side (so it is visible before any script runs) and
+             hidden by `{{admin_protection_hidden}}` when the gate is on. This is
+             the disclosure the operator asked for: flipping
+             `Protect_Settings_by_Admin_Key` to 0 removes the unlock prompt from
+             every admin tab, and the one thing that would otherwise hide that
+             fact is the prompt itself. -->
+        <div class="oc-alert oc-alert-warn oc-protection-notice" id="oc-protection-notice" role="status"
+             data-oc-protection-notice {{admin_protection_hidden}}>
+            <strong>{{admin_not_protected_title}}</strong>
+            {{admin_not_protected_body}}
+        </div>
+
+        <noscript>
+            <div style="max-width:42rem;margin:4rem auto;padding:1.5rem;border:1px solid #d0d7de;border-radius:0.75rem;font-family:system-ui,sans-serif">
+                <h1 style="margin:0 0 0.5rem;font-size:1.25rem">RevoAp requires JavaScript</h1>
+                <p style="margin:0 0 1rem;line-height:1.6">
+                    The console is a single-page application: the pipeline view, the model
+                    picker and every administration panel are rendered in the browser.
+                    The REST API under <code>/v1</code> works without it.
+                </p>
+                <p style="margin:0;line-height:1.6">
+                    Enable JavaScript for this site, or use the API directly — see
+                    <code>docs/API.md</code>.
+                </p>
+            </div>
+        </noscript>
+    </div>
+
+    <!-- =================================================================
+         Translation catalogue, embedded rather than fetched.
+         A round-trip for the catalogue would render English for ~200 ms and
+         then reflow into the operator's language — and for Arabic, flip the
+         whole page direction after they had started reading. The payload is
+         ~35 KB gzipped and caches with the document.
+
+         `type="application/json"` means the browser never executes it, and the
+         content is JSON-encoded with JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS
+         so a `</script>` sequence inside a translation cannot terminate the
+         block early. That is not a theoretical concern: the Help catalogue
+         contains HTML examples.
+         ================================================================= -->
+    <script type="application/json" id="revoap-i18n-catalog">{{i18n_catalog|raw}}</script>
+
+    <!-- =================================================================
+         Legacy panel host. These are the pre-v2 tab bodies; shell.js moves
+         the node into the new <main>. Keeping them in the document (rather
+         than deleting them) is what makes the migration incremental: a panel
+         can be rewritten one at a time without breaking the ones that are not.
+         ================================================================= -->
+        <!-- =============================================================
+             Server-rendered sidebar.
+
+             Like the header, this is PHP output that assets/js/shell.js
+             ENHANCES rather than replaces. It carries the two mount points
+             the Chat tab depends on:
+
+               #connector-list    filled by app.js from /api/connectors
+               #model-selector    filled by model-selector.js; this is the
+                                  consensus-pool picker the whole run is
+                                  configured from
+
+             Both were in the v1 sidebar. Rebuilding the sidebar purely in JS
+             would leave them homeless on first paint and would make the Chat
+             tab unusable until a module ran — so the containers ship in the
+             document and the shell wraps its own navigation around them.
+             ============================================================= -->
+        <aside class="oc-sidebar app-sidebar" id="app-sidebar" aria-label="{{nav_main}}">
+            <!-- The nav sections shell.js builds are prepended above this
+                 block; everything below is server-rendered content that
+                 survives a rebuild. -->
+            <div id="oc-sidebar-content" class="oc-sidebar-content">
+                <h2>{{nav_about}}</h2>
+                <p>{{app_description}}</p>
+
+                <h3 title="{{connectors_hint}}">{{connectors_title}}</h3>
+                <ul id="connector-list" class="oc-list"></ul>
+
+                <h3 title="{{model_pool_help}}">{{model_pool_title}}</h3>
+                <p class="oc-muted oc-small">{{model_pool_hint}}</p>
+                <div id="model-selector" class="oc-model-selector"></div>
+
+                <!-- Routes & build: the external links and the version
+                     read-out. The tab triggers that used to live here moved
+                     into the registry in the header, so this block is now
+                     links and metadata only. -->
+                <section class="oc-about-build" aria-labelledby="oc-about-build-heading">
+                    <h3 id="oc-about-build-heading">{{nav_routes_and_build}}</h3>
+                    <ul class="oc-about-nav">
+                        <li><a class="oc-about-link" href="https://github.com/paulmann/RevoAp" target="_blank" rel="noopener noreferrer">{{nav_repository}}</a></li>
+                        <li><a class="oc-about-link" href="https://deynekin.com" target="_blank" rel="noopener noreferrer" title="{{nav_author}}">{{author_name}}</a></li>
+                        <li class="oc-about-version-row"><span class="oc-version" title="build {{build_id}}">v{{app_version}}</span></li>
+                    </ul>
+                </section>
+            </div>
+        </aside>
+
+        <main class="oc-main app-main" id="revoap-content">
+        <div id="revoap-legacy-panels">
+        <div data-tab-panel="chat">
+            {{chat_section|raw}}
+            <section id="pipeline-section" class="oc-pipeline" aria-live="polite"></section>
+            <section id="final-answer-section" class="oc-final-answer-section" hidden></section>
+            <section id="stats-section" class="oc-stats-panel" hidden></section>
+        </div>
+
+        <div data-tab-panel="dashboard" hidden>
+            <nav id="oc-dashboard-nav" class="oc-settings-nav" aria-label="Dashboard sections" hidden></nav>
+            <!-- Live panel: assets/js/dashboard.js. Reads ONLY public endpoints
+                 (/api/health, /api/health/{system,database,worker},
+                 /api/models/availability/summary) so the landing page works
+                 before the operator unlocks the admin area — a dashboard that
+                 403s on arrival reads as broken. Leads with "is anything
+                 wrong?" rather than with numbers, because a dashboard that
+                 opens with pretty tiles trains people to skim past it. -->
+            <section id="oc-dashboard-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="models" hidden>
+            <nav id="oc-models-nav" class="oc-settings-nav" aria-label="Models sections" hidden></nav>
+            <section id="oc-models-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="settings" hidden>
+            <nav id="oc-settings-nav" class="oc-settings-nav" aria-label="Settings sections" hidden></nav>
+            <section id="oc-settings-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="fallback" hidden>
+            <section id="oc-fallback-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="queue" hidden>
+            <!-- Live panel: assets/js/queue.js renders the worker-health
+                 snapshot, the presence table (including the stale-code
+                 verdict), the job feed with per-job pause/resume/cancel and a
+                 timeline dialog, and the retry / dead-letter state. All of it
+                 reads endpoints that already existed — WorkerHealthService,
+                 WorkerFeedController and JobsController — so the panel is
+                 wiring rather than a new surface. -->
+            <section id="oc-queue-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="users" hidden>
+            <!-- v2.1.0 (T5): live panel — assets/js/users.js renders the
+                 end-user list with ledger totals, the per-user budget editor
+                 and the data export. The operator-account (RBAC) surface is
+                 still pending and says so from inside the panel, rather than
+                 from this template. -->
+            <section id="oc-users-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="audit" hidden>
+            <section id="oc-audit-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="budgets" hidden>
+            <section id="oc-budgets-root" class="oc-settings">
+                <!-- Rendered server-side so the state is correct with scripting
+                     disabled, and replaced by assets/js/admin.js the moment a
+                     controller exists. The schema (db/migrations/023) and the
+                     service layer under src/Admin/ are already in place; what
+                     is pending is the HTTP surface and the panel. Saying so is
+                     better than an empty panel, which reads as "broken" or as
+                     "nothing to configure". -->
+                <div class="card" data-pending-panel="budgets">
+                    <div class="card-header">
+                        <div class="card-header-row">
+                            <div class="stack-sm">
+                                <h3 class="card-title">{{pending_budgets_title}}</h3>
+                                <p class="card-description">{{pending_body}}</p>
+                            </div>
+                            <span class="badge badge-warning badge-dot">{{pending_badge}}</span>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="code-block" data-wrap="true">{{pending_budgets_detail}}</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div data-tab-panel="scheduler" hidden>
+            <section id="oc-scheduler-root" class="oc-settings">
+                <!-- Rendered server-side so the state is correct with scripting
+                     disabled, and replaced by assets/js/admin.js the moment a
+                     controller exists. The schema (db/migrations/023) and the
+                     service layer under src/Admin/ are already in place; what
+                     is pending is the HTTP surface and the panel. Saying so is
+                     better than an empty panel, which reads as "broken" or as
+                     "nothing to configure". -->
+                <div class="card" data-pending-panel="scheduler">
+                    <div class="card-header">
+                        <div class="card-header-row">
+                            <div class="stack-sm">
+                                <h3 class="card-title">{{pending_scheduler_title}}</h3>
+                                <p class="card-description">{{pending_body}}</p>
+                            </div>
+                            <span class="badge badge-warning badge-dot">{{pending_badge}}</span>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="code-block" data-wrap="true">{{pending_scheduler_detail}}</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div data-tab-panel="notifications" hidden>
+            <section id="oc-notifications-root" class="oc-settings">
+                <!-- Rendered server-side so the state is correct with scripting
+                     disabled, and replaced by assets/js/admin.js the moment a
+                     controller exists. The schema (db/migrations/023) and the
+                     service layer under src/Admin/ are already in place; what
+                     is pending is the HTTP surface and the panel. Saying so is
+                     better than an empty panel, which reads as "broken" or as
+                     "nothing to configure". -->
+                <div class="card" data-pending-panel="notifications">
+                    <div class="card-header">
+                        <div class="card-header-row">
+                            <div class="stack-sm">
+                                <h3 class="card-title">{{pending_notifications_title}}</h3>
+                                <p class="card-description">{{pending_body}}</p>
+                            </div>
+                            <span class="badge badge-warning badge-dot">{{pending_badge}}</span>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="code-block" data-wrap="true">{{pending_notifications_detail}}</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div data-tab-panel="backup" hidden>
+            <section id="oc-backup-root" class="oc-settings">
+                <!-- Rendered server-side so the state is correct with scripting
+                     disabled, and replaced by assets/js/admin.js the moment a
+                     controller exists. The schema (db/migrations/023) and the
+                     service layer under src/Admin/ are already in place; what
+                     is pending is the HTTP surface and the panel. Saying so is
+                     better than an empty panel, which reads as "broken" or as
+                     "nothing to configure". -->
+                <div class="card" data-pending-panel="backup">
+                    <div class="card-header">
+                        <div class="card-header-row">
+                            <div class="stack-sm">
+                                <h3 class="card-title">{{pending_backup_title}}</h3>
+                                <p class="card-description">{{pending_body}}</p>
+                            </div>
+                            <span class="badge badge-warning badge-dot">{{pending_badge}}</span>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="code-block" data-wrap="true">{{pending_backup_detail}}</div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div data-tab-panel="localization" hidden>
+            <section id="oc-localization-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="system" hidden>
+            <section id="oc-system-root" class="oc-settings"></section>
+            <section id="oc-flags-root" class="oc-settings"></section>
+            <section id="oc-maintenance-root" class="oc-settings"></section>
+        </div>
+
+        <div data-tab-panel="logs" hidden>
+            <section id="oc-logs-root" class="oc-logs"></section>
+        </div>
+
+        <div data-tab-panel="extensions" hidden>
+            <section id="oc-extensions-root" class="oc-extensions"></section>
+        </div>
+
+        <div data-tab-panel="security" hidden>
+            <section id="oc-security-root" class="oc-security"></section>
+        </div>
+
+        <div data-tab-panel="history" hidden>
+            <section id="oc-history-root" class="oc-history"></section>
+        </div>
+
+        <div data-tab-panel="skills" hidden>
+            <section id="oc-skills-root" class="oc-skills"></section>
+        </div>
+
+        <div data-tab-panel="statistic" hidden>
+            <section id="oc-statistic-root" class="oc-statistic"></section>
+            <!-- v2.1.0 (T5): "My usage" — the current identity's own runs,
+                 tokens, cost and budget verdict, from the append-only usage
+                 ledger. A sibling of the operator-wide statistic root so
+                 statistic.js and my-usage.js never touch the same node. -->
+            <section id="oc-myusage-root" class="oc-statistic"></section>
+        </div>
+
+        <div data-tab-panel="api" hidden>
+            <section id="oc-api-root" class="oc-api"></section>
+        </div>
+
+        <!-- Help is static markup rendered server-side from its own template:
+             no fetch, no admin token, and readable by anyone who can open the
+             app, in the same shell (theme, language, direction) as every other
+             panel. -->
+        <div data-tab-panel="help" hidden>
+            {{help_section|raw}}
+        </div>
+    </div>
+
+    <!-- =================================================================
+         Scripts. All same-origin, all `type="module"`.
+
+         Load order matters in three places and is commented there:
+           theme.js  before shell.js  — the shell paints the current theme into
+                                        its controls on first build;
+           i18n.js   before shell.js  — every label in the shell is t(…);
+           copy-buttons.js before the renderers — pipeline.js and history.js
+                                        import addCopyButton from it.
+         ================================================================= -->
+    <script type="module" src="/assets/js/logger.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/theme.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/i18n.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/shell.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/copy-buttons.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/app.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/tab-nav.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/admin-ui.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/settings.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/models.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/fallback.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/admin.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/queue.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/dashboard.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/users.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/my-usage.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/migration-banner.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/worker-status.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/logs.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/extensions.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/security.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/history.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/statistic.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/skills.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/api.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/katex-render.js?v={{asset_version}}"></script>
+    <!-- Mermaid is vendored as the UMD build and loaded on demand by
+         mermaid-render.js (a dynamic script injection, not a static tag):
+         a 2.7 MB diagram engine must not be on the critical path of a page
+         whose answers may contain no diagrams at all. It is initialised with
+         securityLevel='strict' and startOnLoad=false so untrusted model
+         output never reaches innerHTML — only the SVG Mermaid's strict parser
+         produces is inserted. -->
+    <script type="module" src="/assets/js/mermaid-render.js?v={{asset_version}}"></script>
+</body>
+</html>

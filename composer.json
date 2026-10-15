@@ -1,0 +1,103 @@
+{
+    "name": "paulmann/ai-revoap",
+    "description": "RevoAp — multi-LLM consensus platform with a 4-layer AI pipeline, a durable job queue, an append-only audit trail and a fully localised (en/de/ru/zh/ar) Tailwind + shadcn/ui console.",
+    "type": "project",
+    "license": "MIT",
+    "version": "2.0.0",
+    "keywords": [
+        "llm",
+        "consensus",
+        "openrouter",
+        "bothub",
+        "ai-pipeline",
+        "multi-agent",
+        "sse",
+        "i18n",
+        "tailwindcss",
+        "shadcn-ui"
+    ],
+    "authors": [
+        {
+            "name": "Mikhail Deynekin",
+            "email": "mikhail@deynekin.com",
+            "homepage": "https://Deynekin.com",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/paulmann/RevoAp/issues",
+        "source": "https://github.com/paulmann/RevoAp",
+        "docs": "https://github.com/paulmann/RevoAp/blob/main/README.md"
+    },
+    "require": {
+        "php": "^8.5",
+        "ext-pdo": "*",
+        "ext-curl": "*",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-hash": "*",
+        "ext-openssl": "*"
+    },
+    "suggest": {
+        "ext-intl": "Full CLDR date/number formatting for the five shipped locales. Without it App\\I18n\\Translator falls back to a built-in table that covers the UI's needs.",
+        "ext-opcache": "Strongly recommended in production; see deploy/php/opcache-recommended.ini.",
+        "ext-redis": "Enables the shared cache backend for multi-worker deployments (cache.backend = redis).",
+        "ext-pcntl": "Lets bin/revoap-worker.php handle SIGTERM/SIGUSR1 for graceful draining under systemd.",
+        "ext-zlib": "Compressed audit-log rotation and response-cache storage."
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0",
+        "phpstan/phpstan": "^2.1",
+        "friendsofphp/php-cs-fixer": "^3.68"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        },
+        "files": [
+            "src/Helpers/functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "classmap-authoritative": false,
+        "preferred-install": "dist",
+        "allow-plugins": false
+    },
+    "scripts": {
+        "test": "phpunit --colors=always",
+        "test:smoke": "php tests/SmokeTest.php",
+        "test:all": "PHP=php bash tools/run-tests.sh && tail -n 5 /tmp/testrun.txt",
+        "lint": "find src bin index.php config.php -name '*.php' -print0 | xargs -0 -n1 php -l",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "cs": "php-cs-fixer fix --dry-run --diff",
+        "cs:fix": "php-cs-fixer fix",
+        "i18n:lint": "php bin/revoap-i18n.php lint",
+        "i18n:extract": "php bin/revoap-i18n.php extract",
+        "build:css": "node tools/build-css.mjs",
+        "build:assets": "node tools/build-assets.mjs",
+        "check": [
+            "@lint",
+            "@analyse",
+            "@test:all"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run the PHPUnit suite.",
+        "test:smoke": "Run the standalone smoke suite (no PHPUnit required).",
+        "test:all": "Run every standalone test script and print a pass/fail summary.",
+        "lint": "php -l over every first-party PHP file.",
+        "analyse": "Static analysis with PHPStan (see phpstan.neon).",
+        "i18n:lint": "Verify every shipped catalog covers every key of en.json.",
+        "i18n:extract": "Re-extract translation keys used in PHP/JS into i18n/_keys.json.",
+        "build:css": "Compile ui/tailwind.css into assets/dist/revoap.css (local, no CDN).",
+        "build:assets": "Bundle + fingerprint every front-end asset into assets/dist/.",
+        "check": "Lint + analyse + test — the same gate CI enforces."
+    }
+}

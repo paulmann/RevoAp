@@ -1,0 +1,707 @@
+.oc-pipeline {
+    display: grid;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.oc-step {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-surface);
+    box-shadow: var(--shadow-sm);
+    overflow: hidden;
+}
+
+.oc-step-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--color-bg-secondary);
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.95rem;
+}
+.oc-step-layer {
+    background: var(--color-accent-fill);
+    color: #fff;
+    font-size: 0.7rem;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: help;
+}
+.oc-step-label { flex: 1; font-weight: 600; cursor: help; }
+.oc-status-event { color: var(--color-text-secondary); border-color: var(--color-border); }
+.oc-step-status {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+}
+.oc-status-completed { color: var(--color-success); border-color: var(--color-success); }
+.oc-status-failed    { color: var(--color-error);   border-color: var(--color-error); }
+.oc-status-running   { color: var(--color-warning); border-color: var(--color-warning); }
+
+.oc-step-tabs {
+    display: flex;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-primary);
+}
+.oc-tab {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    padding: 0.6rem 1rem;
+    cursor: pointer;
+    font-size: 0.875rem;
+    font-family: inherit;
+}
+.oc-tab[aria-selected="true"] {
+    color: var(--color-text-primary);
+    border-bottom-color: var(--color-accent);
+}
+
+.oc-tab-pane {
+    padding: 1rem;
+    font-size: 0.95rem;
+    white-space: pre-wrap;
+}
+
+/* ---------- L3 (Consensus) — visually distinguished ------------------- */
+
+.oc-step-l3 {
+    border-color: var(--color-accent);
+    border-width: 1px;
+    box-shadow: 0 0 0 1px var(--color-accent), var(--shadow-sm);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--color-accent) 10%, var(--color-bg-surface)) 0%,
+        var(--color-bg-surface) 60%);
+}
+.oc-step-l3 > .oc-step-header {
+    background: color-mix(in srgb, var(--color-accent) 18%, var(--color-bg-secondary));
+}
+.oc-step-l3 .oc-step-layer {
+    background: var(--color-accent-fill-hover);
+}
+
+.oc-step-verdict {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    padding: 0.15rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid var(--color-border);
+}
+.oc-step-verdict-ok       { color: var(--color-success); border-color: var(--color-success); }
+.oc-step-verdict-partial  { color: var(--color-warning); border-color: var(--color-warning); }
+.oc-step-verdict-conflict { color: var(--color-error);   border-color: var(--color-error); }
+.oc-step-verdict-neutral  { color: var(--color-text-secondary); }
+
+/* ---------- Collapsible stage bodies ---------------------------------- */
+
+/* Four lines are what a reader can scan; the rest of a 4000-character model
+   answer is what makes the audit trail unreadable. assets/js/pipeline.js
+   clamps a stage card's body to this height and offers a per-card "Show
+   more" toggle — but only after measuring that the body really does not
+   fit, so short cards are untouched (no class, no control).
+
+   The clamp is deliberately pure CSS. The complete text stays in the DOM,
+   which is what keeps the copy buttons honest: their payloads are written
+   from the answer string at render time (never read back from the DOM), so
+   "Copy" on a collapsed card still hands over every word, and selecting the
+   pane by hand yields the same. A JS truncation of the text node would have
+   made both silently wrong.
+
+   `overflow-wrap: anywhere` belongs to the clamp rather than to the whole
+   sheet: a single unbreakable token (a hash, a URL, a base64 blob) would
+   otherwise be one enormously wide line that neither the four-line budget
+   nor the card can contain, and the clamped card would clip it
+   horizontally as well as vertically.
+
+   The line budget is 4 lines of the panel's own line-height (1.55 from
+   html/body in app.css). Keep it in step with COLLAPSE_LINES in
+   assets/js/pipeline.js. */
+.oc-collapsible { overflow-wrap: anywhere; }
+.oc-collapsible.oc-collapsed {
+    max-height: calc(4 * 1.55em);
+    overflow: hidden;
+}
+
+/* Same shape as a copy button: a quiet outline control in the card header,
+   right where the answer's own affordances live. It never moves on
+   click — the header is above the body it grows — so expanding a card
+   cannot scroll the page out from under the pointer. */
+.oc-collapse-toggle {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0.02em;
+    color: var(--color-text-secondary);
+    background: transparent;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+    min-height: 1.75rem;
+    transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.oc-collapse-toggle:hover {
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border-color: var(--color-accent);
+}
+.oc-collapse-toggle:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+}
+/* Expanded state stays visibly "on" so a card that is showing everything
+   says so without the user reading the label again. */
+.oc-collapse-toggle[aria-expanded="true"] {
+    color: var(--color-text-primary);
+    border-color: var(--color-accent);
+}
+
+/* ---------- The run's question (first card of the stream) -------------- */
+
+/* Distinct from a stage card on purpose: the pipeline grey/blue cards are
+   machine stages, this one is the user's own text. Accent border + accent
+   tinted header, badge instead of a layer chip, and no chip/status/stats —
+   see renderQueryCard() in assets/js/pipeline.js. */
+.oc-step-query {
+    border-color: var(--color-accent);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-accent) 45%, transparent), var(--shadow-sm);
+    background: linear-gradient(180deg,
+        var(--color-accent-bg) 0%,
+        var(--color-bg-surface) 55%);
+}
+.oc-step-query > .oc-step-header {
+    background: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-secondary));
+}
+.oc-query-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 1.5rem;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 999px;
+    background: var(--color-accent-fill);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+/* Overrides the `cursor: help` a layer label carries: there is no layer
+   tooltip behind this one, and a question mark cursor on plain text
+   promises one. */
+.oc-step-query .oc-step-label { cursor: default; }
+.oc-query-title {
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 0.8rem;
+}
+.oc-query-text {
+    font-size: 1.05rem;
+    font-weight: 500;
+    overflow-wrap: anywhere;
+}
+
+.oc-l3-explain { white-space: normal; display: grid; gap: 1rem; }
+.oc-l3-explain p { margin: 0; }
+.oc-l3-detail { font-size: 0.875rem; }
+
+.oc-l3-top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.75rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+}
+.oc-l3-verdict {
+    display: inline-flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.5rem 0.9rem;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-surface);
+    min-width: 8rem;
+}
+.oc-l3-verdict-label {
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    font-size: 0.85rem;
+}
+.oc-l3-verdict-detail {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+.oc-l3-verdict-ok       { border-color: var(--color-success); color: var(--color-success); }
+.oc-l3-verdict-partial  { border-color: var(--color-warning); color: var(--color-warning); }
+.oc-l3-verdict-conflict { border-color: var(--color-error);   color: var(--color-error); }
+
+.oc-l3-score {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    margin-left: auto;
+}
+.oc-l3-score-num {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+}
+.oc-l3-score-pct {
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--color-accent);
+}
+.oc-l3-score-label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.oc-l3-tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    gap: 0.5rem;
+}
+.oc-l3-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    padding: 0.5rem 0.75rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+}
+.oc-l3-tile-num {
+    font-size: 1.4rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.oc-l3-tile-label {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.oc-l3-section { display: grid; gap: 0.35rem; }
+.oc-l3-section-title {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    font-weight: 700;
+}
+.oc-l3-roles { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.oc-l3-role-chip {
+    font-size: 0.8rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    color: var(--color-text-primary);
+    border: 1px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+}
+
+/* ---------- Consensus Round header ----------------------------------- */
+
+.oc-round-header {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 8px;
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--color-accent) 22%, transparent) 0%,
+        color-mix(in srgb, var(--color-accent) 6%, transparent) 100%);
+    border: 1px dashed color-mix(in srgb, var(--color-accent) 50%, transparent);
+    color: var(--color-text-primary);
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+}
+.oc-round-icon { color: var(--color-accent); font-size: 1rem; }
+.oc-round-title { flex: 1; }
+.oc-round-sub {
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0.02em;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+/* ---------- Current Activity (always-on tail card) -------------------- */
+
+/* v1.8.46 — "run ended without a live event stream" banner. Sits above
+   the pipeline section so a terminal job whose events never reached the
+   browser says so explicitly instead of leaving the worker hint on
+   screen. Amber for the delivery-degraded success case (the task itself
+   did NOT fail), red for a run that genuinely ended badly. */
+.oc-delivery-notice {
+    margin: 0.6rem 0 0.9rem 0;
+    padding: 0.7rem 0.95rem;
+    border-left: 4px solid var(--color-warning);
+    background: color-mix(in srgb, var(--color-warning) 10%, transparent);
+    border-radius: 6px;
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+}
+.oc-delivery-notice[data-state="failed"] {
+    border-left-color: var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 10%, transparent);
+}
+.oc-delivery-notice h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+.oc-delivery-notice p {
+    margin: 0;
+    line-height: 1.5;
+}
+.oc-delivery-notice-action {
+    font-size: 0.875rem;
+}
+
+.oc-current-activity {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-radius: 10px;
+    border: 1px dashed color-mix(in srgb, var(--color-accent) 55%, transparent);
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--color-accent) 8%, var(--color-bg-secondary)) 0%,
+        var(--color-bg-secondary) 100%);
+    box-shadow: var(--shadow-sm);
+}
+.oc-current-activity[data-state="completed"] {
+    border-style: solid;
+    border-color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 8%, var(--color-bg-secondary));
+}
+.oc-current-activity[data-state="failed"] {
+    border-style: solid;
+    border-color: var(--color-error);
+    background: color-mix(in srgb, var(--color-error) 8%, var(--color-bg-secondary));
+}
+.oc-activity-pulse {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    flex: 0 0 2.25rem;
+}
+.oc-activity-spinner {
+    display: inline-block;
+    width: 1.1rem;
+    height: 1.1rem;
+    border: 2px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+    border-top-color: var(--color-accent);
+    border-radius: 50%;
+    animation: oc-spin 0.9s linear infinite;
+}
+.oc-current-activity[data-state="completed"] .oc-activity-spinner {
+    border-color: var(--color-success);
+    border-top-color: transparent;
+    animation: none;
+}
+.oc-current-activity[data-state="failed"] .oc-activity-spinner {
+    border-color: var(--color-error);
+    border-top-color: transparent;
+    animation: none;
+}
+/* A paused run is not progress. The worker is idle and waiting for the
+   operator, so the ring stops and becomes a still amber dot. */
+.oc-current-activity[data-state="paused"] .oc-activity-spinner {
+    animation: none;
+    border-color: transparent;
+    border-top-color: transparent;
+    background: var(--color-warning);
+}
+.oc-activity-state[data-state-label="paused"] {
+    color: var(--color-warning);
+    border-color: var(--color-warning);
+}
+@keyframes oc-spin { to { transform: rotate(360deg); } }
+
+.oc-activity-body { flex: 1; display: grid; gap: 0.2rem; }
+.oc-activity-row { display: flex; align-items: center; gap: 0.5rem; }
+.oc-activity-eyebrow {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    font-weight: 700;
+}
+.oc-activity-state {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 0.05rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-weight: 700;
+}
+.oc-activity-state[data-state-label="running"]   { color: var(--color-warning); border-color: var(--color-warning); }
+.oc-activity-state[data-state-label="completed"] { color: var(--color-success); border-color: var(--color-success); }
+.oc-activity-state[data-state-label="failed"]    { color: var(--color-error);   border-color: var(--color-error); }
+.oc-activity-label { font-size: 0.95rem; font-weight: 600; }
+.oc-activity-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+.oc-activity-stage {
+    font-weight: 700;
+    color: var(--color-text-primary);
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+}
+.oc-activity-sep { opacity: 0.6; }
+
+/* ---------- Final Answer (separate, prominent) ------------------------ */
+
+.oc-final-answer-section {
+    margin: 2rem 0 1.5rem;
+    /* Where scrollIntoView({block:'start'}) lands.
+       v1.8.60 — the header no longer scrolls away: it is pinned
+       (assets/css/app.css, 64px, and `html { scroll-padding-top }` in
+       settings.css clears it for every scrollIntoView target). This
+       declaration is the one the "jump to final answer" button
+       (assets/js/pipeline.js) relies on inside the Chat tab, where the
+       settings strip does not exist — so the section has to clear the
+       pinned header itself, plus the breathing gap it always had. */
+    scroll-margin-top: calc(64px + 1.5rem);
+}
+.oc-final-answer {
+    border: 2px solid var(--color-accent);
+    border-radius: 12px;
+    background: linear-gradient(180deg,
+        color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-surface)) 0%,
+        var(--color-bg-surface) 70%);
+    box-shadow: 0 6px 24px -8px color-mix(in srgb, var(--color-accent) 60%, transparent),
+                var(--shadow-sm);
+    overflow: hidden;
+}
+.oc-final-answer-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.25rem;
+    background: color-mix(in srgb, var(--color-accent) 22%, var(--color-bg-secondary));
+    border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 40%, transparent);
+}
+.oc-final-answer-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    border-radius: 999px;
+    background: var(--color-accent-fill);
+    color: #fff;
+    font-weight: 800;
+    font-size: 1.05rem;
+}
+.oc-final-answer-title {
+    margin: 0;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    flex: 1;
+}
+.oc-final-answer-sub {
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+}
+.oc-final-answer-text {
+    font-size: 1rem;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+.oc-final-answer .oc-step-tabs {
+    background: transparent;
+    border-bottom: 1px solid color-mix(in srgb, var(--color-accent) 30%, transparent);
+}
+.oc-final-answer .oc-tab[aria-selected="true"] {
+    border-bottom-color: var(--color-accent);
+}
+
+/* ---------- Jump to the final answer ---------------------------------- */
+
+/* One floating control, shown only while the answer is off screen
+   (assets/js/pipeline.js drives visibility from an IntersectionObserver on
+   the answer container, so there is no scroll handler and no arithmetic to
+   get wrong).
+
+   `position: fixed` and not a sticky pipeline grid item: a sticky box can
+   only travel inside its containing block, and for a grid item that block
+   is its own grid row — i.e. exactly its own height, so it would not move
+   at all. Fixed is also what lets the control stay reachable while the
+   stream is scrolled anywhere.
+
+   `hidden` needs re-asserting because a display value set by an author rule
+   overrides the UA's `[hidden] { display: none }`. */
+.oc-jump-final {
+    position: fixed;
+    right: clamp(0.75rem, 2vw, 1.5rem);
+    bottom: clamp(0.75rem, 2vh, 1.25rem);
+    z-index: 20;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.85rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-accent);
+    border-radius: 999px;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+}
+.oc-jump-final[hidden] { display: none; }
+.oc-jump-final:hover { background: var(--color-bg-hover); border-color: var(--color-accent-hover); }
+.oc-jump-final:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.oc-jump-final-glyph { font-size: 1rem; line-height: 1; color: var(--color-accent); }
+
+/* ---------- Responsiveness ------------------------------------------- */
+
+@media (max-width: 720px) {
+    .oc-l3-top { flex-direction: column; align-items: flex-start; }
+    .oc-l3-score { margin-left: 0; }
+    .oc-final-answer-header { flex-wrap: wrap; }
+}
+
+/* Phone widths: the floating control keeps its glyph and drops its label,
+   so it stays a small disc in the corner instead of a bar across the
+   content. The full wording survives in aria-label and title. */
+@media (max-width: 600px) {
+    .oc-jump-final { padding: 0.5rem 0.6rem; }
+    .oc-jump-final-text { display: none; }
+}
+
+
+/* v1.9.1 - who runs, and who arbitrates.
+   The composition of the run sits under the question itself, so it is known
+   before the answer arrives: a chip per participant, the arbiter named, and -
+   once the engine has resolved the pool - what it actually used. */
+.oc-query-participants {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--color-border);
+    display: grid;
+    gap: 0.35rem;
+}
+.oc-query-participants-head,
+.oc-query-participants-note {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+.oc-query-arbiter {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-primary);
+}
+.oc-query-participants-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 0.5rem;
+}
+.oc-query-participant {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.35rem;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid var(--color-border);
+    border-radius: 999px;
+    font-size: 0.8rem;
+}
+.oc-query-participant-provider {
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+/* R10 - cost and speed under the question: the estimate before the run, the
+   measured outcome after it, in the same block. */
+.oc-query-economy {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--color-border);
+    display: grid;
+    gap: 0.35rem;
+}
+.oc-query-economy-head {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+.oc-query-economy-list {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.25rem;
+}
+.oc-query-economy-line {
+    font-size: 0.8rem;
+    color: var(--color-text-primary);
+}
+
+/* R9 extension - contribution to the decision, under the final answer. */
+.oc-final-contribution {
+    margin: 0.5rem 0 0;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+/* Run controls under the question: the composer bar's three actions, where the
+   operator is looking while a long run is going on. */
+.oc-query-controls {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px dashed var(--color-border);
+    display: grid;
+    gap: 0.35rem;
+}
+.oc-query-controls-head { margin: 0; font-size: 0.8rem; color: var(--color-text-secondary); }
+.oc-query-controls-buttons { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+/* v1.9.4 - the query card names the attached documents. */
+.oc-query-files {
+    margin: 0.35rem 0 0;
+    padding: 0 0.1rem;
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}

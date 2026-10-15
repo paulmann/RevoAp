@@ -1,0 +1,71 @@
+# =====================================================================
+# assets/.htaccess — defence in depth for the case where Apache serves
+# this directory statically instead of routing it through index.php.
+#
+# App\Http\Response sets a Content-Security-Policy on every document and
+# serveAsset() refuses to serve an extension outside its allow-list. Both
+# only apply when the request reaches PHP. A host configured with
+# `Alias /assets ...` or a plain DocumentRoot serves these files directly,
+# which is faster and therefore common — and which would otherwise expose:
+#
+#   assets/templates/*.html   unrendered templates, leaking the console's
+#                             structure and every {{placeholder}} name
+#   assets/dist/*.map         source maps, if a dev build is ever committed
+#   anything writable         if a subdirectory is ever made writable, a
+#                             uploaded .html would be served as a document
+#                             on the application's own origin — stored XSS
+#
+# So: serve exactly the static types the console needs, refuse everything
+# else, and never let a template be rendered as a document.
+# =====================================================================
+
+# Templates are PHP-side includes, not documents. Refuse them outright rather
+# than relying on the type handler below.
+<FilesMatch "\.(html|htm|php|phtml|inc|tpl)$">
+    Require all denied
+</FilesMatch>
+
+# Belt and braces for anything the FilesMatch above could miss: no handler,
+# no execution, and a Content-Type that cannot be rendered.
+<IfModule mod_headers.c>
+    <FilesMatch "\.(html|htm|php|phtml|inc|tpl|map|sh|sql|log|md)$">
+        Header set Content-Type "text/plain; charset=utf-8"
+        Header set X-Content-Type-Options "nosniff"
+        Header set Content-Disposition "inline"
+    </FilesMatch>
+</IfModule>
+
+# Never execute anything in this tree.
+<IfModule mod_php.c>
+    php_flag engine off
+</IfModule>
+RemoveHandler .php .phtml .php3 .php4 .php5 .php7 .php8 .cgi .pl .py
+RemoveType .php .phtml .php3 .php4 .php5 .php7 .php8
+
+# Options are off: no directory listing (which would enumerate the vendor tree
+# and any backup a deploy tool dropped), no CGI, no includes, no symlinks.
+Options -Indexes -ExecCGI -Includes -FollowSymLinks
+
+# Correct types for the fonts and the vendored libraries. Without these a
+# nosniff browser refuses the woff2 (it arrives as application/octet-stream)
+# and the console silently falls back to system fonts.
+<IfModule mod_mime.c>
+    AddType font/woff2                .woff2
+    AddType font/woff                 .woff
+    AddType font/ttf                  .ttf
+    AddType text/javascript           .js .mjs
+    AddType text/css                  .css
+    AddType application/manifest+json .webmanifest
+    AddType image/svg+xml             .svg
+</IfModule>
+
+# Vendored libraries and fonts are versioned by ?v=<asset_version>, so they
+# can be cached hard. App assets get a day and are busted by the same query.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType font/woff2          "access plus 1 year"
+    ExpiresByType font/woff           "access plus 1 year"
+    ExpiresByType application/javascript "access plus 1 day"
+    ExpiresByType text/javascript     "access plus 1 day"
+    ExpiresByType text/css            "access plus 1 day"
+</IfModule>

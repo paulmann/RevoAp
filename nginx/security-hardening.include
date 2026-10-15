@@ -1,0 +1,151 @@
+# =====================================================================
+# RevoAp v2.0.0 — nginx hardening include.
+#
+#   include /path/to/revoap/nginx/security-hardening.include;
+#
+# Place the `include` INSIDE the `server {}` block, BEFORE the generic
+# `location /` rule. nginx picks the most specific prefix/regex match, so
+# order only matters between two rules of the same kind — but putting these
+# first makes the intent obvious to whoever reads the vhost next.
+#
+# Why this file exists
+# --------------------
+# The application defends itself: App\Http\Response sends a nonce-based,
+# self-only CSP on every document, and index.php::serveAsset() refuses any
+# extension outside a closed allow-list. Both only apply to requests that
+# REACH PHP. The stock vhost rule
+#
+#     location / { try_files $uri $uri/ /index.php?$args; }
+#
+# answers `$uri` from disk whenever the file exists, so these never run for
+# /assets/** — which is faster, and therefore what most hosts use. That leaves
+# three things reachable that should not be:
+#
+#   /assets/templates/*.html   unrendered templates: discloses the console's
+#                              structure and every {{placeholder}} name, and is
+#                              served as text/html on the application's OWN
+#                              origin, which is the stored-XSS shape if any
+#                              assets/ subdirectory ever becomes writable.
+#   /i18n/*.json               the translation catalogues. Writable through the
+#                              admin Localization panel, so they are a write
+#                              target; and /api/i18n/{locale} is the only door
+#                              that applies the enum whitelist and the gate.
+#   /db/*.sql, /tools/*, /ui/* schema and build sources.
+#
+# assets/.htaccess covers the same ground for Apache; this is the nginx half.
+# =====================================================================
+
+# ---- never execute anything outside the single PHP entry point ------------
+# The stock `location ~ \.php$` matches ANY path ending in .php, including
+# /assets/uploads/whatever.php if such a directory ever exists. Restricting the
+# fastcgi location to the real entry points is what makes an uploaded file
+# inert instead of executable.
+location ~ ^/(index\.php|bin/[^/]+\.php)$ {
+    try_files $uri =404;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+    fastcgi_param HTTPS on;
+    # The pipeline in legacy mode and SSE replay both outlive 60 s.
+    fastcgi_read_timeout 3600s;
+    fastcgi_send_timeout 3600s;
+    fastcgi_pass unix:/var/run/revoap.com.sock;
+}
+
+# Any other .php is refused, not executed and not served as source.
+location ~ \.php$ {
+    return 404;
+}
+
+# ---- server-side includes, dotfiles, backups, editor droppings ------------
+location ~ /\.(?!well-known) { deny all; return 404; }
+location ~* \.(sql|bak|orig|save|old|swp|dist|ini|log|sh|sql\.gz|tar|tgz|zip)$ {
+    deny all;
+    return 404;
+}
+
+# ---- source trees that are not documents ----------------------------------
+# ui/ is the Tailwind SOURCE (compiled into assets/dist), tools/ is the build
+# tooling, db/ is the schema, i18n/ is the catalogues, prompts/ and config/
+# hold operator-editable text. None of it is a web resource.
+location ~ ^/(ui|tools|db|i18n|prompts|config|deploy|tests|docs)(/|$) {
+    deny all;
+    return 404;
+}
+
+# ---- templates are PHP-side includes, not documents ------------------------
+location ~ ^/assets/templates/ {
+    deny all;
+    return 404;
+}
+
+# ---- anything else under /assets that is not a known static type ----------
+# The extension list mirrors ASSET_MIME in index.php. Keeping the two in step is
+# deliberate: a type the PHP handler refuses must also be refused here, or the
+# answer depends on which of the two paths served the request.
+location ~* ^/assets/.+\.(html?|php|phtml|inc|tpl|map|sh|md|json|sql|log|bak)$ {
+    deny all;
+    return 404;
+}
+
+# ---- correct types for the vendored fonts and libraries -------------------
+# nginx's stock mime.types already maps woff2 -> font/woff2, but an older or
+# trimmed install may not, and with X-Content-Type-Options: nosniff a browser
+# REFUSES a font served as application/octet-stream instead of sniffing it. The
+# console would then silently fall back to system fonts, which is invisible
+# except as "the typography looks wrong".
+types {
+    font/woff2                woff2;
+    font/woff                 woff;
+    font/ttf                  ttf;
+    font/otf                  otf;
+    text/javascript           js mjs;
+    text/css                  css;
+    application/manifest+json webmanifest;
+    image/svg+xml             svg;
+}
+
+# ---- cache policy ----------------------------------------------------------
+# Vendored libraries and fonts change only on a deliberate re-vendor, so they
+# can be cached hard. App assets are cache-busted by ?v=<asset_version>.
+location ~* ^/assets/(vendor|fonts)/ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=31536000, immutable" always;
+    add_header Cross-Origin-Resource-Policy "same-origin" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    access_log off;
+}
+
+location ~* ^/assets/ {
+    try_files $uri =404;
+    add_header Cache-Control "public, max-age=86400" always;
+    add_header Cross-Origin-Resource-Policy "same-origin" always;
+    add_header X-Content-Type-Options "nosniff" always;
+}
+
+# ---- SSE must not be buffered or compressed --------------------------------
+# text/event-stream cannot be gzipped or buffered: either makes the stream look
+# frozen and the client reconnect in a loop. The application also sends
+# X-Accel-Buffering: no, which nginx honours, but saying it here too means the
+# behaviour does not depend on that header surviving a proxy chain.
+location ~ ^/api/(council/stream|council/session/[^/]+/events/stream|council/jobs/[^/]+/events/stream) {
+    try_files $uri /index.php?$args;
+    include fastcgi_params;
+    fastcgi_param SCRIPT_FILENAME $document_root/index.php;
+    fastcgi_param HTTPS on;
+    fastcgi_pass unix:/var/run/revoap.com.sock;
+    fastcgi_buffering off;
+    fastcgi_cache off;
+    gzip off;
+    proxy_buffering off;
+    chunked_transfer_encoding on;
+    fastcgi_read_timeout 3600s;
+}
+
+# ---- robots: an operations console has no business being indexed -----------
+# The /v1 API returns prompts, model answers and, for an authenticated caller,
+# configuration. X-Robots-Tag already says noindex on every response; this is
+# the belt to that brace.
+location = /robots.txt {
+    try_files $uri =404;
+    add_header Content-Type "text/plain; charset=utf-8" always;
+}

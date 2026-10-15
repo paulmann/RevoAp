@@ -1,0 +1,13 @@
+<section class="oc-stats-summary">
+    <header><h2>Session Statistics</h2></header>
+    <dl class="oc-stats-meta">
+        <div><dt>Total tokens</dt><dd>{{total_tokens}}</dd></div>
+        <div><dt>Duration</dt><dd>{{duration}}</dd></div>
+        <div><dt>Roles</dt><dd>{{role_count}}</dd></div>
+        <div><dt>Most efficient</dt><dd>{{most_efficient}}</dd></div>
+    </dl>
+    <table class="oc-stats-table">
+        <thead><tr><th>Model</th><th>Provider</th><th>Tokens</th><th>Calls</th><th>Latency</th></tr></thead>
+        <tbody>{{rows_html|raw}}</tbody>
+    </table>
+</section>

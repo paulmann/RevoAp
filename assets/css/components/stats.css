@@ -1,0 +1,72 @@
+.oc-stats-panel { margin-bottom: 2rem; }
+
+.oc-step-stats {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0;
+}
+.oc-step-stats > div { display: flex; gap: 0.5rem; }
+.oc-step-stats dt {
+    color: var(--color-text-secondary);
+    min-width: 8rem;
+}
+.oc-step-stats dd { margin: 0; font-weight: 500; }
+
+.oc-stats-summary {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-surface);
+    padding: 1rem 1.25rem;
+}
+.oc-stats-summary h2 { margin-top: 0; }
+.oc-stats-summary h3 { margin: 1.25rem 0 0.25rem 0; font-size: 1rem; }
+
+.oc-stats-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0.5rem 1rem;
+    margin: 0 0 1rem 0;
+}
+.oc-stats-meta > div { display: flex; gap: 0.5rem; align-items: baseline; }
+.oc-stats-meta dt { color: var(--color-text-secondary); min-width: 7rem; }
+.oc-stats-meta dd { margin: 0; font-weight: 600; }
+
+.oc-stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+.oc-stats-table th, .oc-stats-table td {
+    text-align: left;
+    padding: 0.4rem 0.6rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.oc-stats-table th { color: var(--color-text-secondary); font-weight: 600; }
+.oc-stats-table tfoot td { font-weight: 700; border-top: 2px solid var(--color-border); }
+
+.oc-stats-table-detailed {
+    margin-top: 0.5rem;
+    overflow-x: auto;
+    display: table;
+    font-variant-numeric: tabular-nums;
+}
+.oc-stats-table-detailed th, .oc-stats-table-detailed td {
+    white-space: nowrap;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.85rem;
+}
+
+.oc-stats-subheader { margin-top: 1.25rem; }
+.oc-stats-subheader h3 { margin: 0; }
+.oc-stats-note {
+    margin: 0.25rem 0 0 0;
+    color: var(--color-text-secondary);
+    font-size: 0.8rem;
+}
+.oc-stats-empty {
+    text-align: center;
+    color: var(--color-text-secondary);
+    font-style: italic;
+    padding: 1rem !important;
+}
