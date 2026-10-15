@@ -55,13 +55,27 @@
         min-block-size: 100dvh;
         margin: 0;
         /* Long unbroken model ids and hashes appear all over this console;
-           without this a single `anthropic/claude-opus-4.5-20260101` can
-           force horizontal scroll on a 320 px viewport. */
-        overflow-wrap: anywhere;
+           without a break rule one `anthropic/claude-opus-4.5-20260101` can
+           force horizontal scroll on a 320 px viewport.
+
+           v2.1 — `break-word`, NOT `anywhere`. `anywhere` also collapses the
+           MIN-CONTENT size of every element to a single character, so every
+           flex or grid item that has to shrink (a form label, a stat caption,
+           a table cell) stacked one letter per line. Operators saw exactly
+           that. `break-word` breaks the same long tokens when they actually
+           overflow a line, but leaves intrinsic sizing — and therefore the
+           layout — alone. The handful of places that must be able to break
+           anywhere on purpose opt back in explicitly, see the rule below. */
+        overflow-wrap: break-word;
         text-rendering: optimizeLegibility;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
     }
+
+    /* Machine tokens — model slugs, hashes, JSON, ids — may be longer than any
+       column can hold, and they are the one place where breaking inside a
+       token is better than overflowing. Everything else keeps `break-word`. */
+    .mono, .oc-mono, code, pre, kbd, samp { overflow-wrap: anywhere; }
 
     /* Selection colours follow the brand in both themes. */
     ::selection {
@@ -624,6 +638,24 @@
         border-block-end: 1px solid var(--border);
         vertical-align: middle;
     }
+    /* v2.1 — a data cell holds a VALUE, not prose. Left to wrap, a 16-character
+       worker id or a model slug took four lines inside a squeezed column, one
+       fragment per line. The table's scroll wrapper is the right answer: the
+       column keeps its natural width and the operator scrolls. Prose cells
+       keep wrapping normally. */
+    .table td.mono, .table th[data-numeric] { white-space: nowrap; }
+
+    /* The same rule for machine tokens nested inside a cell (model names,
+       file names, ids): `overflow-wrap: anywhere` is right for a paragraph
+       and wrong for a table column — it lets the column shrink to a single
+       character. Inside a table they keep their natural width. Prose outside
+       a table is unaffected. */
+    td .mono, td.oc-mono, th .mono, th.oc-mono {
+        overflow-wrap: normal;
+        white-space: nowrap;
+    }
+    /* …except the one cell that is genuinely prose (the migration versions
+       column), which the settings card stylesheet re-enables. */
     .table tbody tr { transition: background-color var(--duration-instant) linear; }
     .table tbody tr:hover { background: color-mix(in oklch, var(--accent) 55%, transparent); }
     .table tbody tr:last-child td { border-block-end: 0; }

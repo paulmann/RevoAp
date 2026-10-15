@@ -301,7 +301,9 @@ function renderPerModel(d) {
         body.append(tr);
     }
     table.append(body);
-    wrap.append(table);
+    // v2.1 — sixteen columns never fit a phone, and without a scroll
+    // container the table squeezed every header into a letter column.
+    wrap.append(el('div', { class: 'table-wrap' }, table));
     return wrap;
 }
 

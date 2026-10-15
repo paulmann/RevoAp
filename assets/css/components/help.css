@@ -110,6 +110,12 @@
 .oc-help-table-wrap { margin: 0 0 0.8rem 0; overflow-x: auto; }
 .oc-help-table {
     width: 100%;
+    /* v2.1 — no fixed table width. Columns get a per-cell floor instead, so
+       the table fits the phone whenever its columns can breathe, and the
+       wrapper above scrolls only when they genuinely cannot. A table-level
+       `min-inline-size` did one or the other badly: too small and cells broke
+       into fragments, too large and every phone scrolled sideways. */
+    min-inline-size: 0;
     border-collapse: collapse;
     font-size: 0.85rem;
 }
@@ -119,6 +125,11 @@
     padding: 0.4rem 0.55rem;
     text-align: left;
     vertical-align: top;
+    /* v2.1 — the column floor. Without it a two-column table on a 366px
+       wrapper gave every cell ~100px and the text broke into 38px fragments
+       ("Write free, read 0.25– / read 0.25–"). With it the table is either
+       wide enough to read or it scrolls. */
+    min-inline-size: 7rem;
 }
 .oc-help-table th {
     background: var(--color-bg-elevated);

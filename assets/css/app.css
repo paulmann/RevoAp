@@ -73,10 +73,57 @@ a:hover { color: var(--color-accent-hover); }
 
 .oc-main {
     display: grid;
-    grid-template-columns: 280px 1fr;
+    /* v2.1 — ONE full-width column.
+     *
+     * This used to be `280px 1fr`, from v1 where the sidebar lived inside
+     * <main>. In the v2 shell the sidebar is a SIBLING of <main> (`.app-body`
+     * in ui/shell.css lays the two out), so the first track reserved 280px for
+     * a column that no longer exists: every panel was pinned to the sidebar's
+     * width and the rest of the row stayed empty. Operators reported the
+     * console as "narrow" on wide screens and as one-letter-per-line text on
+     * phones — both were this one line.
+     * `minmax(0, 1fr)` rather than `1fr`: it is the only form that also caps
+     * the panel's automatic minimum size, so a wide table inside cannot
+     * stretch the page. */
+    grid-template-columns: minmax(0, 1fr);
     /* 64px = the pinned `.oc-header` height (see the block above). */
     min-height: calc(100vh - 64px);
 }
+
+/* The pre-v2 panels are injected straight into <main> (`display: contents`
+ * on their wrapper), which makes each panel a grid item — and a grid item's
+ * automatic minimum size is its min-content width. Belt and braces with the
+ * `minmax(0, 1fr)` above: no panel may ever be wider than its track. */
+#revoap-legacy-panels > [data-tab-panel] { min-inline-size: 0; }
+
+/* v2.1 — a panel must not be inflated by its own content.
+ *
+ * The same automatic-minimum rule bites one level deeper: a panel root is a
+ * grid container, and one wide child (a form row holding a long <select>, a
+ * code block, a data table) sets the track's minimum and pushes the whole
+ * panel past the viewport. Measured before this rule, on a 390px phone: the
+ * API panel was 452px wide and Help was 801px, so every label inside them
+ * stacked one letter per line. An explicit zero minimum makes the wide child
+ * wrap or scroll instead. */
+.oc-settings > *,
+.oc-help > *,
+.oc-api > *,
+.oc-api-grid > *,
+.oc-statistic-cards > * { min-inline-size: 0; }
+
+/* v2.1 — a data table with no wrapper of its own.
+ *
+ * Several panels build tables straight into their card (migrations, worker,
+ * models, the per-domain preset tables, the external API quotas). None of
+ * them has a scroll wrapper, so the table was forced to the card's width,
+ * every column was squeezed, and the values stacked one fragment per line.
+ * Naming each card would rot the moment a panel is added, so the card that
+ * CONTAINS a table becomes its scroll container, and the table keeps its
+ * natural width (never less than the card, so narrow tables still fill it).
+ * `:has()` is already in the project's browser baseline (`:is()`, `dvh`,
+ * `color-mix()` and OKLCH all ship in the same generation). */
+.oc-card:has(table) { overflow-x: auto; }
+.oc-card:has(table) table { min-inline-size: 100%; inline-size: max-content; }
 
 /* v1.8.60 — the left column sticks below the header and scrolls on its own.
  *
@@ -284,7 +331,6 @@ a:hover { color: var(--color-accent-hover); }
 .oc-protection-notice .oc-mono { margin: 0 0.15rem; }
 
 @media (max-width: 880px) {
-    .oc-main { grid-template-columns: 1fr; }
     /* v1.8.60 — in the stacked layout the sidebar is a full-width band above
      * the content, not a column beside it. Keeping it sticky would pin most
      * of the viewport and the band would never scroll away, so the whole

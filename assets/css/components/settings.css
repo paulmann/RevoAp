@@ -17,9 +17,15 @@
 
 .oc-settings {
     display: grid;
+    /* v2.1 — full width, on the operator's explicit request ("fix the width of
+       the main area to 100%"). The old cap was `max-width: 920px`, which left
+       half of a 1920px screen empty while the cards inside squeezed their
+       labels. `minmax(0, 1fr)` also keeps a wide table from stretching the
+       panel past its track. */
+    grid-template-columns: minmax(0, 1fr);
+    max-width: none;
     gap: 1.25rem;
     padding-top: 0.5rem;
-    max-width: 920px;
 }
 
 .oc-settings h1 { margin: 0 0 0.25rem 0; font-size: 1.25rem; }
@@ -133,6 +139,52 @@
     border-collapse: collapse;
     font-size: 0.85rem;
 }
+
+/* v2.1 — these tables size their columns from their own `width: 100%`, so on a
+ * narrow screen every column is squeezed and the header cells stack one letter
+ * per line ("Fi / le", "Tabl / e ver / sions"). A sibling cell in the same row
+ * cannot fix that: the constraint is the table's own width.
+ *
+ * The cards below are the tables' parents, and there is no markup wrapper to
+ * hang a scroll container on, so the CARD becomes the scroll container. The
+ * table then keeps its natural width (`max-content`, capped at the card on
+ * wide screens by `min-inline-size: 100%`) and the operator scrolls sideways
+ * for the columns that do not fit. `overflow-x: auto` on the card also stops
+ * a wide child from stretching the page: a scroll container's automatic
+ * minimum size is zero. */
+#oc-migrations-card,
+#oc-worker-card,
+#oc-models-card {
+    overflow-x: auto;
+}
+#oc-migrations-card .oc-migrations-table,
+#oc-worker-card .oc-worker-table,
+#oc-models-card .oc-models-table {
+    inline-size: max-content;
+    min-inline-size: 100%;
+}
+#oc-migrations-card th,
+#oc-worker-card th,
+#oc-models-card th { white-space: nowrap; }
+
+/* The "Table versions" cell is the one column with prose in it: it lists every
+ * table a migration touches (`revoap_model_availability=1.0.0, …`). Left at
+ * max-content it alone made the table 3306px wide — 3.3 screens of sideways
+ * scrolling for one row. It wraps inside a fixed measure instead; the other
+ * four columns stay on one line. */
+#oc-migrations-card .oc-migrations-table td:nth-child(3) {
+    inline-size: 22rem;
+    max-inline-size: 22rem;
+    white-space: normal;
+}
+
+/* Every other cell in these three tables holds a short value — a file name, a
+ * worker id, a version, a model slug. Left to wrap, an 18px-wide column made
+ * `gemini-2.5-pro` occupy four lines. They stay on one line; the card scrolls
+ * if the row does not fit. */
+#oc-migrations-card .oc-migrations-table td,
+#oc-worker-card .oc-worker-table td,
+#oc-models-card .oc-models-table td { white-space: nowrap; }
 .oc-models-table th,
 .oc-models-table td,
 .oc-migrations-table th,
@@ -437,6 +489,21 @@
     background: var(--color-bg-primary);
     border-bottom: 1px solid var(--color-border);
 }
+/* v2.1 — the strip bleeds to the edges of the content column with a -2rem
+ * margin, which is the shell's inline padding at ≥1920px only. On narrower
+ * screens the padding is smaller (1.5rem / 1rem / 0.75rem) and the negative
+ * margin made the strip 64px wider than the viewport. The bleed now follows
+ * the same breakpoints as `.app-main` in ui/shell.css. */
+@media (max-width: 767px) {
+    .oc-settings-nav { margin-inline: -0.75rem; padding-inline: 0.75rem; }
+}
+@media (min-width: 768px) and (max-width: 1279px) {
+    .oc-settings-nav { margin-inline: -1rem; padding-inline: 1rem; }
+}
+@media (min-width: 1280px) and (max-width: 1919px) {
+    .oc-settings-nav { margin-inline: -1.5rem; padding-inline: 1.5rem; }
+}
+
 .oc-settings-nav-strip {
     display: flex;
     align-items: center;

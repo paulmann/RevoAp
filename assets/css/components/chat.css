@@ -4,6 +4,13 @@
 .oc-chat h1 { margin: 0 0 0.5rem 0; }
 .oc-chat-form {
     display: grid;
+    /* v2.1 — an explicit single column. Without it the implicit track is
+     * `auto`, whose max-content is the whole control row laid out on one
+     * line (labels + checkboxes + four buttons ≈ 860px). The track then
+     * sized the textarea (`width: 100%` OF THAT TRACK), and on a phone the
+     * form overflowed the viewport by ~500px. `minmax(0, 1fr)` pins the
+     * track to the available width; `.oc-chat-controls` already wraps. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.75rem;
     margin-top: 1rem;
 }
@@ -42,7 +49,20 @@
     opacity: 0.5;
     cursor: not-allowed;
 }
-.oc-control { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; color: var(--color-text-secondary); }
+/* v2.1 — a <select> sizes itself from its longest option, and the consensus
+ * skill name ("Semantic Consensus Council (v1.8.17) [semantic]") is ~790px
+ * wide. As a flex item it could not shrink either, so the whole control row
+ * overflowed the panel — 500px past the viewport on a phone. Neither the
+ * control nor its fields may exceed the row they sit in. */
+.oc-control {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.875rem;
+    color: var(--color-text-secondary);
+    max-inline-size: 100%;
+    min-inline-size: 0;
+}
 .oc-control select {
     background: var(--color-bg-surface);
     color: var(--color-text-primary);
@@ -51,6 +71,8 @@
     padding: 0.35rem 0.5rem;
     font-family: inherit;
     font-size: 0.875rem;
+    max-inline-size: 100%;
+    min-inline-size: 0;
 }
 /* Model selector — sidebar-constrained when collapsed, expands on focus.
    The wrap MUST stay narrower than the sidebar column. The closed-state
