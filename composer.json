@@ -2,7 +2,7 @@
     "name": "paulmann/ai-revoap",
     "description": "RevoAp — multi-LLM consensus platform with a 4-layer AI pipeline",
     "type": "project",
-    "license": "MIT",
+    "license": "PolyForm-Noncommercial-1.0.0",
     "require": {
         "php": ">=8.4",
         "ext-pdo": "*",
