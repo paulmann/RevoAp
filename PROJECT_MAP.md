@@ -38,7 +38,7 @@
 | `vendor/` | зависимости Composer; git-ignored, не править |
 | `.Debian/`, `.dev_agent/`, `.zwork/` | снятые дампы хоста, бэкапы task-state агента, артефакты zwork |
 | `robots.txt`, `.htaccess`, `.gitignore` | `Disallow: /`; запрет dotfiles/`config.php`/`*.key`, front-controller rewrite; правила игнорирования |
-| `.admin.key`, `.bothub.key`, `.{provider}.key` | секреты (имена; значения не читаются). Внимание: `.httpauth` **не** покрыт `.gitignore` |
+| `.admin.key`, `.bothub.key`, `.{provider}.key` | секреты (имена; значения не читаются). `.httpauth` покрыт правилом `/.httpauth` в `.gitignore` |
 
 ## Маршруты (index.php, 150)
 

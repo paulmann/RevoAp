@@ -247,7 +247,8 @@ council_sessions.id`; события привязаны к сессии и ша�
 ## 8. API, безопасность, границы доверия
 
 - Внешний контур `/v1`: ключ формата `rv_` + 48 hex, хранится только как SHA-256;
-  транспорты по приоритету `X-API-Key` → `Authorization: Bearer` → `?api_key`;
+  транспорты по приоритету: сначала заголовок `X-API-Key`, затем заголовок
+  `Authorization` со схемой `Bearer`, затем query-параметр `?api_key`;
   scope `full` / `read` (по умолчанию `read` — least privilege). Операторские
   пути (`/api/settings`, `/api/logs`, `/api/security`, `/api/history`,
   `/api/skills`, `/api/webhooks`, `/api/profile`, `/api/share/session` …)
@@ -477,10 +478,13 @@ council_sessions.id`; события привязаны к сессии и ша�
 
 ## 16. Риски, требующие решения владельца
 
-1. **`.httpauth` не покрыт `.gitignore`** и не отслеживается git — файл с
-   креденшлами basic-auth может попасть в коммит при `git add -A`.
-   Аналогично вне индекса и без игнора: `nginx/`, `ROAD_MAP.md`, `PROJECT_MAP.md`,
-   `.Debian/`.
+1. **`.httpauth` теперь покрыт `.gitignore`** (правило `/.httpauth`): у файла
+   нет суффикса `.key`, поэтому прежний шаблон `*.key` его не ловил, и
+   `git add -A` мог опубликовать креденшлы basic-auth. Доктрина-проверка
+   (`tools/Invoke-RevoApDoctrine.ps1`) требует покрытия для `.httpauth`,
+   `.url`, `.sql.php`, пока файл есть в рабочем дереве. Служебные каталоги
+   `/.Debian/`, `/.dev_agent/`, `/.zwork/`, `/.pytest_cache/` исключены там же;
+   `nginx/`, `ROAD_MAP.md`, `PROJECT_MAP.md` — намеренно в поставке.
 2. **Гейт админки выключен**: `Protect_Settings_by_Admin_Key` = 0 и в базовом
    `config.php`, и в локальном `.config.php`. При выключенном гейте доступны
    ключи провайдеров, каталог моделей, пресеты, миграции, логи, все сессии
