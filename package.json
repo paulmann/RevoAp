@@ -1,6 +1,6 @@
 {
     "name": "@revoap/frontend",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "private": true,
     "description": "Build tooling for the RevoAp console. Tailwind CSS and the vendored front-end libraries are compiled/vendored at build time; the RESULTS are committed under assets/dist and assets/vendor so a deployment never needs Node, npm or network access.",
     "type": "module",

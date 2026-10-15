@@ -3,7 +3,7 @@
     "description": "RevoAp — multi-LLM consensus platform with a 4-layer AI pipeline, a durable job queue, an append-only audit trail and a fully localised (en/de/ru/zh/ar) Tailwind + shadcn/ui console.",
     "type": "project",
     "license": "PolyForm-Noncommercial-1.0.0",
-    "version": "2.0.0",
+    "version": "2.1.0",
     "keywords": [
         "llm",
         "consensus",

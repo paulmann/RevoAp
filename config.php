@@ -76,11 +76,11 @@ declare(strict_types=1);
 return [
     'app' => [
         'name'     => 'RevoAp',
-        // Kept in sync with db/schema.sql `@schema-version` (both 1.9.2)
+        // Kept in sync with db/schema.sql `@schema-version` (both 2.1.0)
         // and the Worker card's "app X" readout. Drift here misfires the
         // worker-vs-deploy version alert. The invariant is asserted without
         // a literal by tests/PromptCacheTest.php and tests/SmokeTest.php.
-        'version'  => '2.0.0',
+        'version'  => '2.1.0',
         'debug'    => false,
         // v1.8.22: emit structured Chrome console logs from the frontend
         // (api fetch start/end/error, sse open/event/error/close,

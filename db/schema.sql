@@ -1,6 +1,6 @@
 -- RevoAp — full database schema (single source of truth)
 -- Project: paulmann/AI-RevoAp
--- @schema-version 1.9.4
+-- @schema-version 2.1.0
 --   Unchanged (1.9.4) by the single-model release: as with migrations 018 and
 --   019, a column's value set is versioned by its own
 --   `-- @table-version council_sessions` annotation, while this top-of-file
