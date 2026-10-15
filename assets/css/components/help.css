@@ -1,0 +1,145 @@
+/* help.css — the in-app Help panel.
+ *
+ * The panel body is server-rendered static markup from
+ * assets/templates/help.html: a long read-only document (what the app is,
+ * how to configure it, how to run the worker, troubleshooting, the API
+ * surface). Nothing in it is interactive, so this stylesheet only has to
+ * give prose, tables and code blocks a readable measure on a themed
+ * surface — every colour is a --color-* token defined by BOTH
+ * themes/{light,dark}.css, so the panel needs no per-theme rules and no
+ * var() fallback. tests/CssTokensTest.php enforces both properties.
+ *
+ * Layout mirrors .oc-settings (grid + gap + 920px measure) so the Help tab
+ * sits in the same visual system as the admin panels.
+ */
+
+.oc-help {
+    display: grid;
+    gap: 1.25rem;
+    padding-top: 0.5rem;
+    max-width: 920px;
+}
+
+.oc-help-head h1 {
+    margin: 0 0 0.35rem 0;
+    font-size: 1.25rem;
+}
+.oc-help-head p { margin: 0; }
+
+/* Sections are the anchor targets of the table of contents. The header is
+   not sticky, so 1rem of breathing room is enough to keep a jumped-to
+   heading off the very edge of the viewport. */
+.oc-help-section { scroll-margin-top: 1rem; }
+.oc-help-section h2 {
+    margin: 0 0 0.6rem 0;
+    padding-bottom: 0.35rem;
+    font-size: 1.1rem;
+    border-bottom: 1px solid var(--color-border);
+}
+.oc-help-section h3 {
+    margin: 1.1rem 0 0.4rem 0;
+    font-size: 0.95rem;
+    color: var(--color-text-secondary);
+}
+.oc-help-section p { margin: 0 0 0.7rem 0; }
+.oc-help-section ul,
+.oc-help-section ol { margin: 0 0 0.7rem 0; padding-left: 1.3rem; }
+.oc-help-section li { margin-bottom: 0.3rem; }
+
+/* Table of contents. Two columns on a desktop, one on anything narrow —
+   the same breakpoint the rest of the shell uses. */
+.oc-help-toc {
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-bg-secondary);
+    padding: 0.85rem 1.1rem;
+}
+.oc-help-toc h2 {
+    margin: 0 0 0.5rem 0;
+    font-size: 0.9rem;
+    color: var(--color-text-secondary);
+}
+.oc-help-toc ol {
+    margin: 0;
+    padding-left: 1.3rem;
+    columns: 2;
+    column-gap: 1.5rem;
+    font-size: 0.875rem;
+}
+.oc-help-toc li { margin-bottom: 0.25rem; break-inside: avoid; }
+@media (max-width: 720px) {
+    .oc-help-toc ol { columns: 1; }
+}
+
+/* Inline code and fenced blocks share one pair of tokens so a `path` in a
+   sentence and the same path in a block read the same. */
+.oc-help code {
+    background: var(--color-bg-code);
+    color: var(--color-text-code);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.05em 0.3em;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.85em;
+    overflow-wrap: anywhere;
+}
+.oc-help-pre {
+    margin: 0 0 0.8rem 0;
+    padding: 0.7rem 0.85rem;
+    background: var(--color-bg-code);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.82rem;
+    line-height: 1.5;
+}
+/* Inside a block the box around the code is the <pre> itself — nesting the
+   inline chip in it would draw a border inside a border. */
+.oc-help-pre code {
+    background: none;
+    border: 0;
+    border-radius: 0;
+    padding: 0;
+    color: inherit;
+    font-size: inherit;
+}
+
+/* Tables. Wrapped in a scroll container because the endpoint and flag
+   tables are wider than a phone screen; without it the whole panel would
+   scroll horizontally. */
+.oc-help-table-wrap { margin: 0 0 0.8rem 0; overflow-x: auto; }
+.oc-help-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.oc-help-table th,
+.oc-help-table td {
+    border: 1px solid var(--color-border);
+    padding: 0.4rem 0.55rem;
+    text-align: left;
+    vertical-align: top;
+}
+.oc-help-table th {
+    background: var(--color-bg-elevated);
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* Callouts: one accent-tinted note for "worth knowing", one
+   warning-tinted for "this silently degrades if you skip it". */
+.oc-help-note,
+.oc-help-warn {
+    margin: 0 0 0.8rem 0;
+    padding: 0.6rem 0.8rem;
+    border-left: 3px solid var(--color-accent);
+    border-radius: 0 6px 6px 0;
+    background: var(--color-accent-bg);
+    font-size: 0.875rem;
+}
+.oc-help-warn {
+    border-left-color: var(--color-warning);
+    background: var(--color-warning-bg);
+}
+.oc-help-note p:last-child,
+.oc-help-warn p:last-child { margin-bottom: 0; }

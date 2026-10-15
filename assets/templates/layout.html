@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en" data-theme="dark" data-ui-theme-default="{{ui_theme}}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{{title}}</title>
+    <meta name="oc-app-version" content="{{app_version}}">
+    <meta name="oc-build" content="{{build_id}}">
+    <meta name="oc-log-to-console" content="{{log_to_console}}">
+    <meta name="oc-app-debug" content="{{app_debug}}">
+    <meta name="oc-ui-theme" content="{{ui_theme}}">
+    <meta name="oc-execution-mode" content="{{execution_mode}}">
+    <meta name="oc-job-worker-warning-seconds" content="{{job_worker_warning_seconds}}">
+    <!-- v1.8.60 — the admin gate's state at first paint. `oc-admin-protection`
+         is `true` when `Protect_Settings_by_Admin_Key` is 1 (or absent) and
+         the operator surface asks for `.admin.key`; `false` means the surface
+         is open and the notice below is shown. Read by
+         /assets/js/admin-ui.js so the notice also appears when the page was
+         served from cache with a stale meta. -->
+    <meta name="oc-admin-protection" content="{{admin_protection}}">
+    <meta name="oc-admin-protection-key" content="{{admin_protection_flag}}">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v={{asset_version}}">
+    <link rel="alternate icon" type="image/svg+xml" href="/favicon.ico?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/themes/light.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/themes/dark.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/app.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/pipeline.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/stats.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/chat.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/settings.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/models.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/logs.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/extensions.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/security.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/history.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/skills.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/statistic.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/api.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/help.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/shared.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/migration-banner.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/worker-status.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/copy-buttons.css?v={{asset_version}}">
+    <!-- v1.8.29: KaTeX math rendering. Loaded from jsDelivr with SRI
+         hashes so the CDN cannot serve tampered code. The auto-render
+         contrib helper (`renderMathInElement`) is invoked from
+         /assets/js/katex-render.js after each LLM answer is inserted
+         into the DOM so untrusted text is never rendered as HTML — we
+         only convert TeX math delimiters into KaTeX nodes. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css" integrity="sha384-UA8juhPf75SzzAMA/4fo3yOU7sBJ0om7SCD2GHq0fZqZco6tr1UCV7nUbk9J90JM" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.js" integrity="sha384-Tt7wBxLKwSzFVRET4O4U9H6v8MNaQ/CjN2FMP4xFm0ErrFu6aNqoonRVW5W40iGI" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"></script>
+</head>
+<body>
+    <header class="oc-header">
+        <!-- v1.8.48 — the brand is a link back to the Chat tab, not a
+             decoration: /assets/js/tab-nav.js delegates the click (and
+             Space) to the canonical [data-tab="chat"] button below. It is
+             styled to keep reading as the header title — `.oc-brand` sets
+             `text-decoration: none` in every state — so the only visible
+             difference is the hover colour and the :focus-visible ring.
+             The aria-label keeps the visible name (WCAG "label in name")
+             and spells out where the link goes. -->
+        <a class="oc-brand" id="oc-brand-link" href="#chat"
+           aria-label="{{app_name}} — go to Chat">{{app_name}}</a>
+        <nav class="oc-nav">
+            <button type="button" class="oc-tab oc-tab-active" data-tab="chat">Chat</button>
+            <!-- v1.8.49 — Models sits directly after Chat: it owns the
+                 model-facing settings (providers, catalogue, consensus
+                 presets, analyzer) that used to live inside Settings. Same
+                 contract as every other tab: `data-tab` + matching
+                 `[data-tab-panel]`, started hidden, revealed by
+                 /assets/js/models.js once /api/models/status reports
+                 ModelsTab=true. The body is gated by the shared admin lock
+                 screen (HttpOnly cookie), so unlocking here unlocks
+                 Settings too — one unlock, no second mechanism. -->
+            <button type="button" class="oc-tab" data-tab="models" id="oc-tab-models" hidden>Models</button>
+            <button type="button" class="oc-tab" data-tab="settings" id="oc-tab-settings" hidden>Settings</button>
+            <button type="button" class="oc-tab" data-tab="history" id="oc-tab-history" hidden>History</button>
+            <!-- v1.9.4 - Skills sits to the right of History: the consensus
+                 skills with their descriptions, one click from a run. The
+                 button starts hidden; skills.js reveals it once the
+                 catalogue loaded. Statistic moved to the sidebar's
+                 "Routes & build" block, under API. -->
+            <button type="button" class="oc-tab" data-tab="skills" id="oc-tab-skills" hidden>Skills</button>
+            <!-- v1.8.48 — API / Logs / Security and the version moved to the
+                 sidebar's "Routes & build" block (see below). They kept
+                 their `data-tab` values and ids, so the tab machinery and
+                 the per-tab modules (api.js / logs.js / security.js) find
+                 them unchanged. Chat / Settings / History / Statistic stay
+                 in the header. -->
+            <!-- v1.8.45 — worker-status indicator. Always visible, left of
+                 the theme toggle. Green = worker alive + queue empty,
+                 blue (animated spinner) = jobs in flight, red = problems.
+                 The detailed tooltip is rendered by
+                 /assets/js/worker-status.js from the three public
+                 /api/health/worker* endpoints; clicking it opens
+                 Settings → Worker (a no-op when the tab is disabled). -->
+            <button id="oc-worker-status" type="button" class="oc-button-ghost oc-worker-status"
+                    data-lane="unknown" aria-label="Worker status: checking" aria-haspopup="true"
+                    aria-expanded="false"
+                    title="Worker status — click for Settings → Worker">
+                <span class="oc-worker-status-dot" aria-hidden="true"></span>
+            </button>
+            <button id="theme-toggle" class="oc-button-ghost" aria-label="Toggle theme">◐</button>
+        </nav>
+    </header>
+
+    <!-- v1.8.60 — "Settings are not protected by an admin key".
+         Rendered server-side (so it is visible before any script runs) and
+         hidden by `{{admin_protection_hidden}}` when the gate is on. This is
+         the disclosure the operator asked for: flipping
+         `Protect_Settings_by_Admin_Key` to 0 removes the unlock prompt from
+         every admin tab, and the one thing that would otherwise hide that
+         fact is the prompt itself. -->
+    <div class="oc-alert oc-alert-warn oc-protection-notice" id="oc-protection-notice" role="status"
+         data-oc-protection-notice {{admin_protection_hidden}}>
+        <strong>Settings are not protected by an admin key.</strong>
+        Every operator route (Settings, Models, Logs, Security, Webhooks, API keys, Profile,
+        domain presets, the analyzer and the worker diagnostics) is reachable without a token,
+        and nothing is asked for. Set
+        <span class="oc-mono">Protect_Settings_by_Admin_Key</span> to
+        <span class="oc-mono">1</span> in <span class="oc-mono">config.php</span> or
+        <span class="oc-mono">.config.php</span> to require the key from
+        <span class="oc-mono">.admin.key</span> again.
+    </div>
+
+    <main class="oc-main">
+        <aside class="oc-sidebar">
+            <h2>About</h2>
+            <p>RevoAp routes your query through a 4-layer LLM consensus pipeline and shows the full audit trail.</p>
+            <h3>Active connectors</h3>
+            <ul id="connector-list" class="oc-list"></ul>
+            <h3 title="Models invoked by L1 — pick 3+ for richer consensus.">Consensus models</h3>
+            <p class="oc-muted oc-small">Pick the LLMs L1 will query in parallel. Each row is one independent answer; L2/L3/L4 then normalize, score and synthesize.</p>
+            <div id="model-selector" class="oc-model-selector"></div>
+
+            <!-- v1.8.48 — "Routes & build". API / Logs / Security are the
+                 tab triggers that used to live in the header: same
+                 `data-tab` values, same ids, same `hidden` start, same
+                 config-driven reveal (/api/apikeys/status,
+                 /api/logs/status, /api/security/status), but rendered as
+                 list rows instead of header buttons. Help is a panel inside
+                 this app (no external URL, no file from docs/ — that
+                 directory is not served). Author, repository and the
+                 version/build read-out close the block. Every row that
+                 activates a tab carries `data-tab`, so the existing
+                 machinery (and the `oc-tab-active` highlight) applies
+                 unchanged. -->
+            <section class="oc-about-build" aria-labelledby="oc-about-build-heading">
+                <h3 id="oc-about-build-heading">Routes & build</h3>
+                <ul class="oc-about-nav">
+                    <li><button type="button" class="oc-about-link" data-tab="api" id="oc-tab-api" hidden>API</button></li>
+                    <!-- v1.9.4 - Statistic moved here, under API, as asked:
+                         same id and data-tab, so statistic.js keeps finding
+                         it unchanged. -->
+                    <li><button type="button" class="oc-about-link" data-tab="statistic" id="oc-tab-statistic" hidden>Statistic</button></li>
+                    <li><button type="button" class="oc-about-link" data-tab="logs" id="oc-tab-logs" hidden>Logs</button></li>
+                    <!-- Extensions (MD.Viewer install/update). Same sidebar
+                         contract as Logs: data-tab + matching
+                         [data-tab-panel], started hidden, revealed by
+                         /assets/js/extensions.js once
+                         /api/extensions/status reports ExtensionsTab=true. -->
+                    <li><button type="button" class="oc-about-link" data-tab="extensions" id="oc-tab-extensions" hidden>Extensions</button></li>
+                    <li><button type="button" class="oc-about-link" data-tab="security" id="oc-tab-security" hidden>Security</button></li>
+                    <li><button type="button" class="oc-about-link" data-tab="help" id="oc-tab-help">Help</button></li>
+                    <li><a class="oc-about-link" href="https://github.com/paulmann/AI-Consensus" target="_blank" rel="noopener noreferrer">GitHub</a></li>
+                    <li><a class="oc-about-link" href="https://deynekin.com" target="_blank" rel="noopener noreferrer" title="Author: Mikhail Deynekin">Mikhail Deynekin</a></li>
+                    <li class="oc-about-version-row"><span class="oc-version" title="build {{build_id}}">v{{app_version}}</span></li>
+                </ul>
+            </section>
+        </aside>
+
+        <section class="oc-content">
+            <div data-tab-panel="chat">
+                {{chat_section|raw}}
+                <section id="pipeline-section" class="oc-pipeline" aria-live="polite"></section>
+                <section id="final-answer-section" class="oc-final-answer-section" hidden></section>
+                <section id="stats-section" class="oc-stats-panel" hidden></section>
+            </div>
+            <div data-tab-panel="models" hidden>
+                <!-- v1.8.49 — same sticky-strip contract as Settings: the
+                     nav lives outside the tab root because a sticky box is
+                     confined to its containing block. Populated (and
+                     hidden) by models.js via the shared section-strip
+                     factory in admin-ui.js, which also publishes the
+                     height as --oc-settings-nav-height. -->
+                <nav id="oc-models-nav" class="oc-settings-nav" aria-label="Models sections" hidden></nav>
+                <section id="oc-models-root" class="oc-settings"></section>
+            </div>
+            <div data-tab-panel="settings" hidden>
+                <!-- v1.8.47 — sticky section strip. Lives outside
+                     #oc-settings-root because a sticky box is confined to
+                     its containing block: as a grid item of .oc-settings it
+                     would have no room to move. Populated (and hidden)
+                     by settings.js::refreshSettingsNav(). -->
+                <nav id="oc-settings-nav" class="oc-settings-nav" aria-label="Settings sections" hidden></nav>
+                <section id="oc-settings-root" class="oc-settings"></section>
+            </div>
+            <div data-tab-panel="logs" hidden>
+                <section id="oc-logs-root" class="oc-logs"></section>
+            </div>
+            <div data-tab-panel="extensions" hidden>
+                <section id="oc-extensions-root" class="oc-extensions"></section>
+            </div>
+            <div data-tab-panel="security" hidden>
+                <section id="oc-security-root" class="oc-security"></section>
+            </div>
+            <div data-tab-panel="history" hidden>
+                <section id="oc-history-root" class="oc-history"></section>
+            </div>
+            <div data-tab-panel="skills" hidden>
+                <section id="oc-skills-root" class="oc-skills"></section>
+            </div>
+            <div data-tab-panel="statistic" hidden>
+                <section id="oc-statistic-root" class="oc-statistic"></section>
+            </div>
+            <div data-tab-panel="api" hidden>
+                <section id="oc-api-root" class="oc-api"></section>
+            </div>
+            <!-- v1.8.48 — Help. A normal tab panel rendered from its own
+                 template by index.php::renderHome() and injected below, so
+                 it needs no JavaScript, no fetch and no admin token: it
+                 renders for anyone who can open the app, in the same shell
+                 (theme, header, sidebar) as every other panel. -->
+            <div data-tab-panel="help" hidden>
+                {{help_section|raw}}
+            </div>
+        </section>
+    </main>
+
+    <script type="module" src="/assets/js/logger.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/theme.js?v={{asset_version}}"></script>
+    <!-- Copy buttons for LLM answer blocks. Loaded before the renderers so
+         the delegated click listener is installed for content they create;
+         pipeline.js and history.js also import addCopyButton from it. -->
+    <script type="module" src="/assets/js/copy-buttons.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/app.js?v={{asset_version}}"></script>
+    <!-- v1.8.48 — shell navigation: the header brand (→ Chat tab) and the
+         About block's Help item (→ Help panel). Loaded next to app.js
+         because it wires the shell, not a tab body. -->
+    <script type="module" src="/assets/js/tab-nav.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/settings.js?v={{asset_version}}"></script>
+    <!-- v1.8.49 — Models tab. Runs before settings.js is irrelevant: the
+         two modules share the admin shell (admin-ui.js) but keep separate
+         roots and separate section registries, so order does not matter. -->
+    <script type="module" src="/assets/js/models.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/migration-banner.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/worker-status.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/logs.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/extensions.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/security.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/history.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/statistic.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/skills.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/api.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/katex-render.js?v={{asset_version}}"></script>
+    <!-- v1.8.41: Mermaid diagram renderer. Pinned to 11.12.2 via the
+         dynamic `import()` inside /assets/js/mermaid-render.js
+         (https://cdn.jsdelivr.net/npm/mermaid@11.12.2/dist/mermaid.esm.min.mjs).
+         Initialised with securityLevel='strict' and startOnLoad=false
+         so untrusted model output never reaches innerHTML directly —
+         only the SVG that Mermaid's strict parser produces is inserted. -->
+    <script type="module" src="/assets/js/mermaid-render.js?v={{asset_version}}"></script>
+</body>
+</html>

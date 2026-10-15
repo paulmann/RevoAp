@@ -1,0 +1,18 @@
+# RevoAp — Apache configuration
+RewriteEngine On
+
+# Block direct access to sensitive files
+<FilesMatch "^(\.env|\.[a-zA-Z0-9_-]+\.key|composer\.(json|lock)|config\.php)$">
+    Require all denied
+</FilesMatch>
+
+# Block dotfiles in general
+RewriteRule "(^|/)\." - [F]
+
+# Front-controller routing — pass everything not a real file/dir to index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ index.php [L]
+
+# Default character set
+AddDefaultCharset UTF-8

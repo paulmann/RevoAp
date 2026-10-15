@@ -1,0 +1,340 @@
+*,*::before,*::after { box-sizing: border-box; }
+
+html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    line-height: 1.55;
+    min-height: 100vh;
+}
+
+a { color: var(--color-accent); }
+a:hover { color: var(--color-accent-hover); }
+
+/* v1.8.60 — the header and the left column are pinned.
+ *
+ * Before this, the whole document scrolled in one flow: the header, the
+ * sidebar and the content all moved together, so the navigation and the
+ * model picker left the screen as soon as the operator scrolled into a long
+ * answer. The header now sticks to the top of the viewport and the sidebar
+ * to the left edge below it, each with a z-index that keeps page content
+ * behind it (the settings/models section strip uses 5, the "jump to final
+ * answer" button 20, the worker-status tooltip 60 — so the shell occupies 30
+ * and the tooltip still paints over it).
+ *
+ * The shell's offset is the header's own height, and `min-height: 64px`
+ * makes that height a fact rather than a guess: `.oc-main` has always
+ * assumed 64px (`calc(100vh - 64px)` below), and `.oc-sidebar`,
+ * `.oc-settings-nav` and `html { scroll-padding-top }` all have to agree with
+ * it. `min-height` rather than `height` so a narrow viewport where the nav
+ * wraps still grows the header instead of clipping its buttons.
+ *
+ * No new custom property for the 64px: the CSS token test
+ * (tests/CssTokensTest.php) requires every used `--oc-*` token to be defined
+ * by both themes with identical name sets, and a layout constant is not a
+ * theme colour. The value is stated once here and repeated with a comment at
+ * each site that has to line up with it.
+ */
+.oc-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    min-height: 64px;
+}
+/* v1.8.48 — the brand is a link to the Chat tab (assets/js/tab-nav.js) but
+   has to keep reading as the header title, not as a link: the element is an
+   <a>, so the UA underline is switched off here for every state (`:hover`
+   and `:focus` re-assert it because the generic `a:hover` rule above cannot
+   un-underline anything) and the colour is pinned to the text token the
+   plain <div> used to inherit. Only the hover colour and the
+   :focus-visible ring reveal that it is interactive. The `border-radius`
+   is there for the ring, which is drawn outside the text box. */
+.oc-brand {
+    font-weight: 700;
+    font-size: 1.125rem;
+    letter-spacing: 0.02em;
+    color: var(--color-text-primary);
+    text-decoration: none;
+    border-radius: 4px;
+}
+.oc-brand:hover,
+.oc-brand:focus { color: var(--color-accent); text-decoration: none; }
+.oc-brand:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.oc-nav { display: flex; gap: 1rem; align-items: center; }
+.oc-version { color: var(--color-text-secondary); font-size: 0.85rem; }
+
+.oc-main {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    /* 64px = the pinned `.oc-header` height (see the block above). */
+    min-height: calc(100vh - 64px);
+}
+
+/* v1.8.60 — the left column sticks below the header and scrolls on its own.
+ *
+ * Three declarations here are load-bearing, and they only work together:
+ *
+ *   * `align-self: start` — a grid item stretches to its row by default, and
+ *     a stretched sticky box has no room to travel: it would simply never
+ *     stick. This gives the box its own height instead of the row's.
+ *   * `height: calc(100vh - 64px)` — exactly one viewport minus the header.
+ *     It replaces the stretch that used to paint the column's tint and its
+ *     right border to the bottom of the page, so the shell still *looks*
+ *     unchanged (the column is always painted for the whole visible area),
+ *     while the box stays shorter than the page and can therefore stick.
+ *   * `overflow-y: auto` — the column scrolls by itself when its content is
+ *     taller than the viewport, which is what makes a pinned column usable
+ *     at all: without it the lower half of the sidebar would be unreachable.
+ */
+.oc-sidebar {
+    border-right: 1px solid var(--color-border);
+    padding: 1.5rem;
+    background: var(--color-bg-secondary);
+    position: sticky;
+    /* Directly under the header: 64px = its pinned height. */
+    top: 64px;
+    align-self: start;
+    height: calc(100vh - 64px);
+    overflow-y: auto;
+}
+.oc-sidebar h2 { margin-top: 0; font-size: 1rem; }
+.oc-sidebar h3 { font-size: 0.875rem; color: var(--color-text-secondary); margin-bottom: 0.5rem; }
+.oc-list { list-style: none; padding: 0; margin: 0; }
+.oc-list li { padding: 0.4rem 0; border-bottom: 1px solid var(--color-border); font-size: 0.875rem; }
+
+/* ---------------------------------------------------------------------
+ * v1.8.48 — "Routes & build", the sidebar block that now hosts the
+ * API / Logs / Security tab triggers moved out of the header, the Help
+ * entry, the author + repository links and the version read-out.
+ *
+ * Three of the rows are <button data-tab="…"> triggers (they must stay
+ * buttons: that is what the tab machinery binds to) and three are real
+ * <a> elements, so `.oc-about-link` is a reset first and a look second —
+ * both element types have to render identically as plain link rows with
+ * no button chrome. Every colour is a themed --color-* token, so light
+ * and dark come out of the same rules.
+ *
+ * The active row is marked twice: the tab machinery's own `oc-tab-active`
+ * class (which settings.css also paints — the two-class selector below
+ * wins over its single-class rule) turns the text into the primary colour
+ * and adds a surface tint, and the accent bar on the left edge survives a
+ * theme swap.
+ * ------------------------------------------------------------------- */
+.oc-about-build {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--color-border);
+}
+.oc-about-build h3 { margin-top: 0; }
+.oc-about-nav { list-style: none; padding: 0; margin: 0; }
+.oc-about-nav li {
+    padding: 0.35rem 0;
+    border-bottom: 1px solid var(--color-border);
+    font-size: 0.875rem;
+}
+.oc-about-nav li:last-child { border-bottom: none; }
+.oc-about-version-row { padding-top: 0.6rem; }
+.oc-about-link {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0.15rem 0.35rem 0.15rem 0.6rem;
+    background: none;
+    border: 0;
+    border-left: 2px solid transparent;
+    border-radius: 4px;
+    font: inherit;
+    font-size: 0.875rem;
+    color: var(--color-accent);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+.oc-about-link:hover,
+.oc-about-link:focus { color: var(--color-accent-hover); text-decoration: underline; }
+.oc-about-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 1px; }
+.oc-about-link.oc-tab-active {
+    color: var(--color-text-primary);
+    background: var(--color-bg-hover);
+    border-left-color: var(--color-accent);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+/* Content column. Previously capped at a reading measure (960px) and
+   overridable per operator preference via `data-ui-width` on <html>.
+   Both are gone: the column now fills whatever its grid track offers —
+   `280px 1fr` on desktop, a single column under 880px (see the .oc-main
+   media query below) — so the pane follows the window at every size.
+
+   `min-width: 0` matters: `.oc-content` is a grid item, and a grid item
+   defaults to `min-width: auto`, which lets a wide descendant (the
+   History tab's minmax() grid, wide tables, long unbroken tokens) push
+   the track past the viewport and introduce horizontal scroll. Zeroing
+   the automatic minimum keeps the overflow *inside* the pane, where the
+   inner rules already handle it.
+
+   Padding is fluid rather than fixed: the old 2rem side padding ate
+   ~24% of a 320px screen for nothing. */
+.oc-content {
+    padding: clamp(1rem, 2.5vw, 1.5rem) clamp(1rem, 3vw, 2rem);
+    width: 100%;
+    min-width: 0;
+}
+
+/* ---------------------------------------------------------------------
+/* ---------------------------------------------------------------------
+ * v1.8.47: the base button rule.
+ *
+ * `.oc-button` was emitted by ten renderers (api.js, history.js, logs.js,
+ * security.js, statistic.js) but was never defined anywhere in assets/css,
+ * so a plain `<button class="oc-button">` fell through to the UA default —
+ * a light system button with black text in *both* themes. The log viewer's
+ * "Auto-refresh" toggle was the visible failure: its `oc-button-active`
+ * modifier supplied a dark background while the text stayed black, giving
+ * 1.24:1 in the dark theme.
+ *
+ * The base below mirrors the shape the modifiers already had
+ * (.oc-button-primary / -secondary / -ghost / -danger: radius 6px, a solid
+ * border, a token background, cursor: pointer), so each modifier keeps
+ * overriding it property by property — primary pads wider and sets heavier
+ * in its own rule, ghost and the api key actions stay narrower.
+ *
+ * Cascade note: `.oc-button:hover` is a two-class selector and therefore
+ * outranks a bare modifier like `.oc-button-active`. Variants that paint
+ * their own background re-assert it on :hover immediately below, and
+ * `.oc-button-primary:hover` / `.oc-button-secondary:hover` override the
+ * generic hover by source order. Do not add `:not(:disabled)` to the base
+ * hover — that would raise it above the variants' own hover rules.
+ * ------------------------------------------------------------------- */
+.oc-button {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.45rem 0.8rem;
+    font-family: inherit;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.2;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.oc-button:hover { background: var(--color-bg-hover); }
+.oc-button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+.oc-button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Filled status variants keep their own tint under the pointer instead of
+   inheriting the generic --color-bg-hover declared just above. */
+.oc-button-active:hover { background: var(--color-accent-bg); }
+.oc-button-danger:hover { background: var(--color-error-bg); }
+
+.oc-button-primary {
+    background: var(--color-accent-fill);
+    color: #fff;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0.6rem 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s ease;
+}
+.oc-button-primary:hover { background: var(--color-accent-fill-hover); }
+.oc-button-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.oc-button-ghost {
+    background: transparent;
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.4rem 0.6rem;
+    cursor: pointer;
+}
+
+.oc-muted { color: var(--color-text-secondary); }
+
+.oc-pre {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 1rem;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+/* v1.8.60 — the "Settings are not protected by an admin key" strip.
+ *
+ * It sits between the pinned header and the shell (see layout.html), so it
+ * needs the shell's inline padding to read as part of the page rather than
+ * as a floating box. Colours come from `.oc-alert` / `.oc-alert-warn`.
+ * `scroll-margin-top` is unnecessary: nothing links to it. */
+.oc-protection-notice {
+    margin: 0.75rem clamp(1rem, 3vw, 2rem) 0;
+}
+.oc-protection-notice .oc-mono { margin: 0 0.15rem; }
+
+@media (max-width: 880px) {
+    .oc-main { grid-template-columns: 1fr; }
+    /* v1.8.60 — in the stacked layout the sidebar is a full-width band above
+     * the content, not a column beside it. Keeping it sticky would pin most
+     * of the viewport and the band would never scroll away, so the whole
+     * sticky treatment is undone here and the band behaves as it always
+     * has: it scrolls with the page. */
+    .oc-sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--color-border);
+        position: static;
+        top: auto;
+        align-self: stretch;
+        height: auto;
+        overflow-y: visible;
+    }
+}
+
+/* v1.8.50 - the Research card: the ranked list, the analysis, and the change plan. */
+.oc-research-papers { margin: 0.6rem 0 1rem; padding-left: 1.2rem; }
+.oc-research-papers > li { margin: 0 0 0.8rem; }
+.oc-research-papers .oc-muted { margin-top: 0.15rem; }
+.oc-research-analysis {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.8rem 1rem;
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.85rem;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 32rem;
+    overflow: auto;
+}
+.oc-plan-list { margin: 0.4rem 0 0.9rem; padding-left: 1.2rem; }
+.oc-plan-list > li { margin: 0 0 0.45rem; }
+
+/* v1.8.51 - the research journal: only-new, history, live plan state. */
+.oc-inline-check { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; }
+.oc-inline-check input { margin: 0; }
+.oc-research-history-list { margin: 0.4rem 0 0.8rem; padding-left: 1.2rem; }
+.oc-research-history-list > li { margin: 0 0 0.3rem; }
+.oc-research-history-open {
+    background: none;
+    border: 0;
+    padding: 0;
+    color: var(--color-accent);
+    cursor: pointer;
+    font: inherit;
+    text-align: left;
+}
+.oc-research-history-open:hover { text-decoration: underline; }
+.oc-research-history .oc-muted { margin: 0.2rem 0; }
+.oc-plan-status-row { align-items: center; }
+.oc-plan-status { font: inherit; padding: 0.2rem 0.4rem; }

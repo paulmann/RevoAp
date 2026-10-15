@@ -1,0 +1,986 @@
+<!-- help.html — the Help panel body.
+     Rendered by index.php::renderHome() into the shell's `help_section`
+     variable, exactly the way chat.html is injected — which is also why
+     this comment does not spell the placeholder out: TemplateHelper would
+     substitute it here too.
+     It is static markup on purpose: the page is read-only, needs no admin
+     token, no fetch and no client-side rendering, so nothing here can fail
+     at runtime and no operator-only data is reachable through it.
+
+     Content is derived from the tracked documentation (README.md,
+     docs/WorkerArchitecture.md, docs/Settings.md, docs/Storage.md,
+     docs/History.md, docs/VectorMemory.md, docs/Logs.md, docs/api-rest.md,
+     db/migrations/README.md, deploy/systemd/*) and from the code it
+     describes. Every path, binary, flag and endpoint named below exists in
+     this repository. -->
+<section class="oc-help">
+    <header class="oc-help-head">
+        <h1>Help</h1>
+        <p class="oc-muted">What RevoAp is, how to configure it, how to run the worker that executes
+            its pipelines, how to read the logs when something is off, and which HTTP endpoints are
+            public, admin-gated or API-key gated.</p>
+    </header>
+
+    <nav class="oc-help-toc" aria-labelledby="oc-help-toc-heading">
+        <h2 id="oc-help-toc-heading">On this page</h2>
+        <ol>
+            <li><a href="#oc-help-what">What it is</a></li>
+            <li><a href="#oc-help-requirements">Requirements</a></li>
+            <li><a href="#oc-help-configuration">Configuration</a></li>
+            <li><a href="#oc-help-database">Database</a></li>
+            <li><a href="#oc-help-web">Running the web app</a></li>
+            <li><a href="#oc-help-worker">Running the worker</a></li>
+            <li><a href="#oc-help-operations">Operations &amp; troubleshooting</a></li>
+            <li><a href="#oc-help-api">API reference</a></li>
+            <li><a href="#oc-help-version">Version &amp; build</a></li>
+            <li><a href="#oc-help-batch">Batch mode and :batch models</a></li>
+            <li><a href="#oc-help-prompt-cache">Prompt caching</a></li>
+            <li><a href="#oc-help-catalogue">Model catalogue and Actualize</a></li>
+            <li><a href="#oc-help-system-health">System health</a></li>
+        </ol>
+    </nav>
+
+    <section class="oc-help-section" id="oc-help-what">
+        <h2>1. What it is</h2>
+
+        <p>RevoAp takes a natural-language query and routes it through a <strong>4-layer LLM council
+                pipeline</strong>, then shows the whole trail that produced the answer:</p>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Layer</th><th>Does</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>L0</code> Skill router</td><td>Picks the skill that shapes the run (creating one when none fits).</td></tr>
+                    <tr><td><code>L1</code> Distribution</td><td>Asks every selected model, in parallel.</td></tr>
+                    <tr><td><code>L2</code> Normalization</td><td>Reshapes each answer into discrete claims. Internal — no LLM call.</td></tr>
+                    <tr><td><code>L3</code> Consensus</td><td>Scores agreement between the claims and flags conflicts.</td></tr>
+                    <tr><td><code>L4</code> Synthesis</td><td>Writes the final answer from the collected material.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p>Every step is recorded. The Chat panel renders the pipeline as it progresses (each card
+            carries the model, tokens, latency, cost and, on a cache hit, the cache checksum), and the
+            same data stays queryable afterwards:</p>
+        <ul>
+            <li><strong>Audit trail.</strong> Steps, per-model responses and pipeline events are persisted
+                per session; <em>History</em> replays any past session end to end.</li>
+            <li><strong>Model pool.</strong> The sidebar's <em>Consensus models</em> list selects which LLMs
+                take part. Three or more gives a meaningfully richer consensus.</li>
+            <li><strong>Skills and domains.</strong> Skills are declarative JSON definitions under
+                <code>src/Skills/definitions/</code>; the consensus backends they select are listed by
+                <code>GET /api/consensus/skills</code> (default <code>semantic_consensus_reasoning</code>).</li>
+            <li><strong>Durable runs.</strong> A run started from the UI is a row in the
+                <code>revoap_jobs</code> table, executed by the CLI worker outside PHP-FPM. Its lifecycle
+                transitions land in <code>revoap_job_events</code>, which is what the History panel's
+                job timeline renders.</li>
+            <li><strong>External access.</strong> Runs can also be launched over the REST API
+                (<code>/v1/runs</code>) or shared as read-only links.</li>
+        </ul>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-requirements">
+        <h2>2. Requirements</h2>
+
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Component</th><th>Requirement</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>PHP</td>
+                        <td><strong>8.5 CLI</strong> is the verified runtime; the source stays
+                            8.4-compatible and <code>composer.json</code> requires <code>php &gt;=8.4</code>.</td>
+                    </tr>
+                    <tr>
+                        <td>Extensions</td>
+                        <td><code>pdo</code> (plus the <code>pdo_mysql</code> driver for persistent storage),
+                            <code>curl</code> (connector HTTP and the parallel L1 dispatch),
+                            <code>json</code>, <code>mbstring</code>.
+                            <code>pcntl</code> is optional: with it the worker installs
+                            <code>SIGTERM</code>/<code>SIGINT</code> handlers and finishes the current cycle
+                            before exiting.</td>
+                    </tr>
+                    <tr>
+                        <td>Database</td>
+                        <td><strong>MySQL 8.0+ or MariaDB 10.6+.</strong> The job queue is acquired with
+                            <code>SELECT … FOR UPDATE SKIP LOCKED</code>; older servers fall back to a plain
+                            <code>FOR UPDATE</code>. The database itself is optional for a first look — without
+                            a DSN the app boots in memory mode, and History/Statistic have nothing to read.</td>
+                    </tr>
+                    <tr>
+                        <td>Web server</td>
+                        <td>nginx or Apache in front of PHP-FPM. There is <strong>no <code>api/</code>
+                            directory on disk</strong>: every URL is a virtual route dispatched by
+                            <code>index.php</code>, so requests that do not match a real file must be
+                            forwarded to it (the bundled <code>.htaccess</code> and
+                            <code>nginx/revoap.com.conf</code> do exactly that).</td>
+                    </tr>
+                    <tr>
+                        <td>Writable paths</td>
+                        <td><code>logs/</code>, <code>cache/</code> and <code>var/</code> must be writable by
+                            the account the web app and the worker run as (see
+                            <a href="#oc-help-web">Running the web app</a>).</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-configuration">
+        <h2>3. Configuration</h2>
+
+        <p>Everything is driven by <code>config.php</code> at the project root plus a small number of
+            optional override files next to it. Later layers win:</p>
+
+        <pre class="oc-help-pre"><code>config.php               base tree shipped with the release
+config/models/*.php      model catalogues expanded from the `model_files` key
+.config.php              operator overlay — recursive leaf-merge of any section
+.url                     scalar override of app.url
+.sql.php                 full replace of the `database` block (emergency DB override)
+var/config/runtime.json  values written by the admin Settings panel — merged last</code></pre>
+
+        <h3>Files you create</h3>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>File</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>config.php</code></td><td>Base configuration. Present in the release; edit it or overlay it (below).</td></tr>
+                    <tr><td><code>.config.php</code></td><td>Returns a partial config tree (e.g. <code>['pipeline' =&gt; ['execution_mode' =&gt; 'legacy']]</code>). Merged over the base tree; the recommended place for host-specific values, since it survives upgrades.</td></tr>
+                    <tr><td><code>.{provider}.key</code></td><td>One provider API key per file — e.g. <code>.bothub.key</code>, <code>.openrouter.key</code>, <code>.openai.key</code>. Create with <code>umask 077</code> or <code>chmod 600</code>. The Settings panel writes these files for you when a key is saved.</td></tr>
+                    <tr><td><code>.admin.key</code></td><td>The admin token, 0600. Alternative to the <code>REVOAP_ADMIN_TOKEN</code> environment variable; either one unlocks every <code>/api/settings/*</code>, <code>/api/logs/*</code>, <code>/api/security/*</code>, <code>/api/history/*</code> and <code>/api/statistics/*</code> route.</td></tr>
+                    <tr><td><code>var/config/runtime.json</code></td><td>Written by Settings. Merged on top of everything else, so a saved value takes effect on the next request without restarting PHP.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="oc-help-note">
+            <p>A file that fails to load never blocks boot: <code>Config</code> records what it found under
+                <code>app.diagnostics.config_sources</code> and a human-readable summary under
+                <code>app.diagnostics.config_overrides</code>, which <code>/api/debug</code> and the
+                Settings diagnostics surface.</p>
+        </div>
+
+        <h3>Optional feature flags</h3>
+        <p>Each optional tab is enabled by a flag in <code>config.php</code>. The comparison is strict
+            (<code>=== true</code>), so a truthy string does not enable anything, and the top-level
+            spelling wins over the nested one when both are set:</p>
+
+        <pre class="oc-help-pre"><code>return [
+    'app' =&gt; [
+        'SettingsTab' =&gt; true,
+        'LogsTab'     =&gt; true,
+        'SecurityTab' =&gt; false,
+        'HistoryTab'  =&gt; false,
+        'ApiTab'      =&gt; true,
+    ],
+    // Top-level aliases — the operator-friendly spelling.
+    'SettingsTab' =&gt; true,
+    'LogsTab'     =&gt; true,
+];</code></pre>
+
+        <p>When a flag is <code>false</code> the corresponding entry disappears from the sidebar and its
+            endpoints answer <code>404</code> (for example <code>settings_disabled</code> /
+            <code>logs_disabled</code>). The sidebar entry is not the gate — the flag and the admin token
+            are — so hiding it means only that the feature is switched off.</p>
+
+        <h3>The admin-key gate</h3>
+        <p><code>Protect_Settings_by_Admin_Key</code> decides whether the operator surface asks for the
+            admin token at all. It is set in <code>config.php</code> and can be overridden per host in
+            <code>.config.php</code>, which wins:</p>
+        <ul>
+            <li><code>1</code> — the token is required everywhere. This is the historical behaviour, and
+                it is also what an <em>absent</em> setting means, so an install that has not opted out
+                keeps the gate it always had. The token comes from <code>.admin.key</code> (or
+                <code>REVOAP_ADMIN_TOKEN</code>), and the UI shows the unlock prompt.</li>
+            <li><code>0</code> — no key is requested anywhere: the guards pass without one, the unlock
+                prompt and every "admin token required" banner disappear, and nothing is reported as
+                <code>unauthorized</code>. A banner under the header states that the surface is
+                unprotected.</li>
+        </ul>
+
+        <div class="oc-help-warn">
+            <p>A <code>0</code> here is a deliberate hole, not a convenience. Anyone who can reach the host
+                can then, with no credential at all, rewrite the provider API keys, the model catalogue and
+                the consensus presets, change the database DSN, apply and baseline migrations and recreate
+                the database, purge the response cache, read the log files, rewrite the IP allow/deny
+                lists, read every stored session (the query, the full final answer and the prompts) and
+                mint, rotate or revoke API keys. Use <code>0</code> only on a host nobody else can reach —
+                behind <code>.htaccess</code>/HTTP auth, loopback-only, or on a private machine.</p>
+        </div>
+
+        <h3>What the Settings panel changes</h3>
+        <ul>
+            <li><strong>Providers / API keys</strong> — base URL, key and an active checkbox per provider.
+                <em>Save</em> writes the key to <code>.{provider}.key</code> (0600), never into the JSON
+                config. <em>Test</em> probes the live endpoint; <em>Import models</em> pulls the catalog.</li>
+            <li><strong>Models</strong> — the active rows that drive consensus (bounded by
+                <code>models.catalog.max_rows</code>, default <code>1000</code>; see
+                <a href="#oc-help-catalogue">Model catalogue and Actualize</a>).</li>
+            <li><strong>Database</strong> — host, port, database, charset, socket, user, password, serialized
+                into a DSN. <em>Test</em> opens a short-lived connection and runs <code>SELECT 1</code>.</li>
+            <li><strong>Database maintenance</strong> — <em>Check DB</em>, <em>Apply Migrations</em>,
+                per-file <em>Apply</em>, <em>Baseline</em>, <em>Download schema dump</em>, and
+                <em>ReCreate DB</em>. See <a href="#oc-help-database">Database</a>.</li>
+            <li><strong>Runtime</strong> — <code>app.debug</code>, <code>app.url</code>,
+                <code>app.timezone</code>, the model-response cache (enabled + TTL) and the pipeline
+                switches <code>parallel_l1</code> / <code>max_roles_per_skill</code>.</li>
+            <li><strong>Cache</strong> — read-only statistics for the model-response cache plus bulk
+                invalidation, so neither needs a shell.</li>
+            <li><strong>Worker</strong> — worker status, the queue counts and a no-token self-test job.</li>
+        </ul>
+
+        <p>Saved secrets are never echoed back: <code>GET /api/settings</code> returns a masked
+            fingerprint and the source the key was loaded from (<code>file</code> / <code>env</code> /
+            <code>config</code>).</p>
+
+        <div class="oc-help-warn">
+            <p>The admin token gates write access to every secret RevoAp touches, so keep
+                <code>.admin.key</code> (and any <code>.{provider}.key</code>) at <code>0600</code>, owned
+                by the account the app and the worker run as. Rotating it is a three-step job: generate a
+                new value, replace the file or the environment variable, then let the 2-hour admin cookie
+                expire or click <em>Lock</em>.</p>
+        </div>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-database">
+        <h2>4. Database</h2>
+
+        <p><code>db/schema.sql</code> is the single source of truth. One import creates the complete
+            schema — sessions, steps, model responses, events, the job queue
+            (<code>revoap_jobs</code>, <code>revoap_job_events</code>), the memory store
+            (<code>memory_items</code>), API keys, webhooks, the response cache and the bookkeeping tables:</p>
+
+        <pre class="oc-help-pre"><code>mysql -u &lt;user&gt; -p &lt;database&gt; &lt; db/schema.sql</code></pre>
+
+        <p>Every statement is idempotent (<code>CREATE TABLE IF NOT EXISTS</code>), so re-importing it
+            against a populated database is safe. The file declares its own versions — a top-of-file
+            <code>@schema-version</code> and one <code>@table-version &lt;table&gt; &lt;semver&gt;</code>
+            comment per table.</p>
+
+        <h3>Settings → Database</h3>
+        <ul>
+            <li><strong>Check DB</strong> compares the live database against <code>db/schema.sql</code> —
+                tables, columns, types and NULL/NOT NULL — and adds a <em>Schema versions</em> section
+                listing every table whose live version (recorded in <code>app_config</code>) differs from
+                the declared one. Drift also raises the banner shown on every page.</li>
+            <li><strong>ReCreate DB</strong> replays <code>db/schema.sql</code> and then <em>baselines</em>
+                <code>db/migrations/</code>: each file is recorded as applied <strong>without being
+                executed</strong>. That is safe because of the rule below.</li>
+        </ul>
+
+        <h3>Migrations</h3>
+        <p><code>db/migrations/</code> holds the incremental migrations that converge an
+            <em>existing</em> deployment on the current shape (<code>014_memory_items</code>,
+            <code>015_api_keys</code>, <code>016_webhooks</code>, <code>017_worker_presence</code>); the
+            <code>schema_migrations</code> table tracks which of them have been applied. A fresh install
+            needs none of them.</p>
+
+        <p>Two rules keep that consistent:</p>
+        <ol>
+            <li><strong>Every table a migration creates is also declared in <code>db/schema.sql</code>.</strong>
+                Otherwise a <em>ReCreate DB</em> would baseline the migration while the table was still
+                missing.</li>
+            <li><strong>A migration exists only when an already-deployed database must converge</strong>
+                without a full re-import. A change that only fresh installs need does not get one.</li>
+        </ol>
+
+        <p>To change a table: edit its block in <code>db/schema.sql</code>, bump that table's
+            <code>@table-version</code> and the file-level <code>@schema-version</code>, then — if existing
+            installations must converge — add <code>db/migrations/NNN_short_name.sql</code> carrying the
+            same annotation and idempotent DDL, and apply it through Settings. After a successful apply the
+            declared versions are written into <code>app_config</code>, so a later <em>Check DB</em> comes
+            back clean.</p>
+
+        <div class="oc-help-note">
+            <p>The model-response cache table also self-installs on first use
+                (<code>CREATE TABLE IF NOT EXISTS</code>) when the database account may run DDL. Importing
+                <code>db/schema.sql</code> remains the preferred path.</p>
+        </div>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-web">
+        <h2>5. Running the web app</h2>
+
+        <p>Point the web server at the project root, forward everything that is not a real file to
+            <code>index.php</code>, and make sure PHP-FPM runs as an account that can write the three
+            runtime directories:</p>
+
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Path</th><th>Why it must be writable</th></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><code>logs/</code></td>
+                        <td>The debug log (<code>logs/revoap-debug.log</code>) and the always-on error log
+                            (<code>logs/revoap-error.log</code>) both resolve their directory here. If the
+                            directory cannot be created or written, logging degrades to <strong>silent</strong> —
+                            no warning, no line, nothing in the Logs tab. An empty Logs tab is almost always a
+                            permissions problem, not a quiet application.</td>
+                    </tr>
+                    <tr>
+                        <td><code>cache/</code></td>
+                        <td>The filesystem backend of the model-response cache writes
+                            <code>cache/&lt;provider&gt;/&lt;model&gt;/&lt;sha&gt;.json</code>. Without write
+                            permission that backend fails (and says so in the error log) while the database
+                            backend keeps working; with neither backend every run pays full price.</td>
+                    </tr>
+                    <tr>
+                        <td><code>var/</code></td>
+                        <td>Holds <code>var/config/runtime.json</code> (values saved in Settings) and the
+                            legacy flat cache tree <code>var/cache/model-responses/</code>.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p>The Security tab's self-check reports <code>logs_dir_writable</code> and
+            <code>var_dir_writable</code>, which is the quickest way to confirm this from inside the app.</p>
+
+        <h3>After a deploy</h3>
+        <p>Reload PHP-FPM so the new sources are read (this resets OPcache), then hard-refresh the browser.
+            Static assets are requested as <code>?v={asset_version}</code>, where the token combines the app
+            version with the newest mtime under <code>assets/</code>, so a re-deploy busts browser caches on
+            its own. To confirm what the server is actually running, compare
+            <code>GET /api/debug</code> → <code>app.build_id</code> with
+            <code>git rev-parse --short=12 HEAD</code>.</p>
+
+        <h3>Debug output</h3>
+        <p><code>app.debug=true</code>, <code>GET /api/debug</code>, or <code>?debug=1</code> on any URL all
+            produce the same sanitized snapshot: database status and storage mode, discovered connectors
+            with the reason each unavailable one was skipped, which active models point at a usable
+            provider, the static stage plan, and actionable hints. API keys, DSN passwords and absolute
+            paths are stripped before the payload is returned or logged.</p>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-worker">
+        <h2>6. Running the worker</h2>
+
+        <h3>Why it exists</h3>
+        <p>A consensus run makes several slow, sequential LLM calls. When that ran inside the web request,
+            an nginx or PHP-FPM timeout, an idle-database disconnect or a closed browser tab could abort it
+            mid-flight. The worker is a long-lived CLI process that runs the same pipeline
+            <strong>outside PHP-FPM</strong> and writes every pipeline event into the database; the browser
+            simply replays those events, so a reload — even on another machine — rejoins the run instead of
+            restarting it.</p>
+
+        <p>The queue is the <code>revoap_jobs</code> table. A job enqueued while no worker is running simply
+            waits: start the worker later and it is picked up cleanly.</p>
+
+        <h3>Command line</h3>
+        <pre class="oc-help-pre"><code>php bin/revoap-worker.php [--once|--loop] [--sleep=SEC] [--worker-id=ID] [--max-jobs=N] [--stale-after=SEC]</code></pre>
+
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Flag</th><th>Effect</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>--once</code></td><td>Acquire and run a single job, then exit. Default when no mode flag is given; safe for a foreground smoke check.</td></tr>
+                    <tr><td><code>--loop</code></td><td>Daemon mode: poll until <code>SIGTERM</code>.</td></tr>
+                    <tr><td><code>--sleep=SEC</code></td><td>Seconds between empty-queue polls in <code>--loop</code> mode (default 1).</td></tr>
+                    <tr><td><code>--worker-id=ID</code></td><td>Identifier written to <code>revoap_jobs.locked_by</code> (default <code>&lt;hostname&gt;-&lt;pid&gt;</code>).</td></tr>
+                    <tr><td><code>--max-jobs=N</code></td><td>Stop after N successful acquires, even in <code>--loop</code> mode (default 0 = no cap).</td></tr>
+                    <tr><td><code>--stale-after=SEC</code></td><td>Heartbeat threshold: running jobs whose heartbeat is older than SEC are reclaimed (default from config, 300).</td></tr>
+                    <tr><td><code>--max-attempts=N</code></td><td>Override the recovery retry ceiling for this process (rows created with their own ceiling keep it).</td></tr>
+                    <tr><td><code>--backoff-base=SEC</code></td><td>Override <code>backoff_base_seconds</code> and rebuild the ramp as ×1 / ×4 / ×10 of it.</td></tr>
+                    <tr><td><code>--backoff-max=SEC</code></td><td>Cap the rebuilt ramp.</td></tr>
+                    <tr><td><code>--no-auto-recovery</code></td><td>Disable auto-recovery: stale jobs are flipped to <code>stale</code> and stay there.</td></tr>
+                    <tr><td><code>--status</code></td><td>Print the worker diagnostic snapshot (the same JSON as <code>/api/health/worker</code>) and exit.</td></tr>
+                    <tr><td><code>--help</code></td><td>Print the usage text and exit.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <pre class="oc-help-pre"><code># Drain the queue once and exit.
+php bin/revoap-worker.php --once
+
+# Daemon mode with a one-second tempo.
+php bin/revoap-worker.php --loop --sleep=1 --stale-after=300
+
+# Stable identifier for a named host, and a stop after ten jobs.
+php bin/revoap-worker.php --loop --worker-id=worker-eu-1
+php bin/revoap-worker.php --loop --max-jobs=10
+
+# Diagnostic snapshot (exit code 0; the JSON carries the verdict).
+php bin/revoap-worker.php --status
+php bin/revoap-worker.php --help</code></pre>
+
+        <p>Exit codes: <code>0</code> success — including "the queue was empty" in <code>--once</code>
+            mode; <code>2</code> invoked from the web SAPI (the script refuses to run there);
+            <code>3</code> help printed; <code>4</code> fatal bootstrap error (config missing, database
+            unreachable).</p>
+
+        <h3>Running it under systemd</h3>
+        <p>Two unit templates ship in <code>deploy/systemd/</code>: <code>revoap-worker.service</code> for a
+            single runner and <code>revoap-worker@.service</code> for a pool. Copy the one you need to
+            <code>/etc/systemd/system/</code>, adjust user, group, working directory and PHP path, then:</p>
+
+        <pre class="oc-help-pre"><code># Single worker.
+sudo cp deploy/systemd/revoap-worker.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now revoap-worker.service
+sudo systemctl status revoap-worker.service
+sudo journalctl -u revoap-worker.service -f -o cat | jq .
+
+# Pool: one process per instance (revoap-worker@1, @2, …).
+sudo cp deploy/systemd/revoap-worker@.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now revoap-worker@1 revoap-worker@2
+sudo systemctl status 'revoap-worker@*'
+sudo journalctl -u 'revoap-worker@*' -f -o cat | jq .</code></pre>
+
+        <p>Each instantiated unit pins <code>--worker-id=worker-%i</code>, so
+            <code>/api/health/worker</code> lists stable identifiers (<code>worker-1</code>,
+            <code>worker-2</code>, …) instead of hostname-pid pairs. The units restart on any non-zero exit
+            (<code>Restart=always</code>, <code>RestartSec=5</code>), allow 600 s for a graceful stop, and
+            emit one JSON line per event to journald.</p>
+
+        <div class="oc-help-warn">
+            <p><strong>Run the worker as the same account the PHP-FPM pool runs as</strong> (the templates
+                ship <code>User=www-data</code>). That keeps <code>logs/</code>, <code>cache/</code> and
+                <code>var/</code> writable for it, and it keeps the 0600 secret files
+                (<code>.admin.key</code>, <code>.{provider}.key</code>) readable by the process that needs
+                them. A worker under a different account usually dies at bootstrap with exit code 4 and a
+                <code>worker.bootstrap.*</code> line.</p>
+        </div>
+
+        <h3>Tempo and recovery</h3>
+        <ul>
+            <li><strong><code>--sleep</code></strong> (environment <code>WORKER_SLEEP</code>) is how long an
+                idle worker waits between queue polls — one <code>SELECT</code> per interval per process.
+                <code>1</code> suits interactive hours; <code>5</code> is the recommended quiet-hours
+                setting. A non-empty queue does not sleep: jobs run back to back.</li>
+            <li><strong><code>--stale-after</code></strong> (environment <code>WORKER_STALE_AFTER</code>)
+                is the heartbeat age at which a running job is considered abandoned. The sweep runs before
+                every acquire — so raising <code>--sleep</code> also postpones the worst-case recovery by
+                the same amount.</li>
+            <li><strong>Retries.</strong> Auto-recovery is on by default: a stale job is requeued with its
+                attempt counter incremented and a <code>next_run_at</code> in the future (the backoff), and
+                <code>acquireNext()</code> skips rows that are not due yet. When the retry budget
+                (<code>max_attempts</code>, default 3) is exhausted the job becomes <code>failed</code> with
+                <code>exhausted_retries</code> in its error envelope. Ramp and limits come from
+                <code>pipeline.jobs.recovery.*</code> (<code>auto_recovery_enabled</code>,
+                <code>max_attempts</code>, <code>stale_after_seconds</code>,
+                <code>backoff_base_seconds</code>, <code>backoff_max_seconds</code>), whose leaves are
+                clamped on read.</li>
+        </ul>
+
+        <h3>worker.env</h3>
+        <p><code>deploy/systemd/worker.env.example</code> is the template for the unit's
+            <code>EnvironmentFile</code> — copy it to <code>/etc/revoap/worker.env</code>, keep it
+            <code>0640</code> and never commit it. It carries <code>WORKER_SLEEP</code>,
+            <code>WORKER_STALE_AFTER</code>, <code>WORKER_MAX_JOBS</code>,
+            <code>WORKER_BACKOFF_BASE</code>, <code>WORKER_BACKOFF_MAX</code>,
+            <code>WORKER_MAX_ATTEMPTS</code> and, if the host needs one, an env-provided
+            <code>REVOAP_ADMIN_TOKEN</code>. Values there override the inline defaults in the unit, which is
+            how the tempo is tuned without editing unit files.</p>
+
+        <h3>How much parallelism?</h3>
+        <p>A worker handles <strong>one job at a time</strong>: it acquires a single row, runs it to a
+            terminal state, then polls again. Parallelism therefore equals the number of worker processes,
+            which is why the pool template exists. Two workers can never take the same job — the row is
+            claimed inside a transaction and fenced by the row lock.</p>
+
+        <p>Size the pool from measurements rather than guesses: <em>workers ≈ peak queue length ÷ mean job
+            duration</em>. Start with one or two instances, watch <code>/api/health/worker</code>, and
+            measure real per-process memory (<code>systemctl show revoap-worker@1 -p MemoryCurrent</code>)
+            before setting a hard limit such as <code>MemoryMax</code> — an unmeasured cap can kill a worker
+            in the middle of a long pipeline.</p>
+
+        <p>The worker also upserts a presence row (<code>revoap_worker_presence</code>, throttled to once
+            per second) while it runs and removes it on a clean exit, so an operator can tell "alive and
+            idle" from "never started" and from "crashed".</p>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-operations">
+        <h2>7. Operations &amp; troubleshooting</h2>
+
+        <p>Start with <code>GET /api/health/worker</code> (public) or
+            <code>php bin/revoap-worker.php --status</code>: both emit the same envelope, whose
+            <code>worker_status</code> field is the fastest verdict.</p>
+
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th><code>worker_status</code></th><th>Means</th><th>Do</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>not_running</code></td><td>Jobs are queued but no worker heartbeat is recorded and no worker process is alive.</td><td>Start the worker — systemd, or <code>--once</code> for a single drain.</td></tr>
+                    <tr><td><code>migration_missing</code></td><td>The <code>revoap_jobs</code> table does not exist.</td><td>Import <code>db/schema.sql</code>, or Settings → Database → <em>ReCreate DB</em>.</td></tr>
+                    <tr><td><code>stale</code></td><td>The newest heartbeat is older than the stale threshold.</td><td>Check the journal and restart the worker — the previous process stopped without cleaning up.</td></tr>
+                    <tr><td><code>healthy</code></td><td>Work is in flight, or jobs are queued with a live worker picking them up.</td><td>Nothing.</td></tr>
+                    <tr><td><code>idle</code></td><td>No queued or running jobs.</td><td>Nothing.</td></tr>
+                    <tr><td><code>unknown</code></td><td>Fallback — the snapshot could not be classified.</td><td>Re-read; check the application logs.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p>If <code>pipeline.execution_mode</code> is <code>legacy</code>, the envelope does not report a
+            status of its own for it: the <code>recommendations</code> list carries the instruction to set
+            it back to <code>job</code> (in <code>.config.php</code> or <code>var/config/runtime.json</code>),
+            and the status stays derived from the queue and heartbeat as in the table above.</p>
+
+        <h3>Symptom by symptom</h3>
+        <ul>
+            <li><strong>A job stays <code>queued</code> and the chat shows no events.</strong> Either no
+                worker is running, or the job is inside an auto-recovery backoff window
+                (<code>next_run_at</code> in the future). The <code>commands</code> block of
+                <code>/api/health/worker</code> carries the exact start/restart commands for the host.</li>
+            <li><strong>The worker died mid-run.</strong> The row is reclaimed as stale and requeued with a
+                backoff until the retry budget runs out; the History panel's job timeline shows
+                <code>stale.detected</code> → <code>stale.requeued</code>, and on exhaustion
+                <code>stale.exhausted</code> plus a <code>failed</code> status carrying
+                <code>exhausted_retries</code>. The worker's own log lines are
+                <code>worker.stale.requeued</code>, <code>worker.stale.exhausted</code> and
+                <code>worker.reclaim.stale</code>.</li>
+            <li><strong>Logs are empty.</strong> <code>logs/</code> is not writable by the account the app
+                runs as, so logging silently degrades. Confirm with the Security self-check
+                (<code>logs_dir_writable</code>) and the Logs tab, which lists each file with its
+                <code>writable</code> flag.</li>
+            <li><strong>The response cache never hits.</strong> Look for
+                <code>cache.fs_store.mkdir_failed</code> or <code>cache.fs_store.write_failed</code>
+                (<code>cache/</code> not writable) and <code>cache db store failed</code> (database backend
+                write failure) in <code>logs/revoap-error.log</code>. A
+                <code>cache.store.refused</code> line is <em>not</em> a permissions problem: it records
+                that a response was deliberately not cached because it was empty or an error envelope.
+                Settings → Cache shows entries, bytes and the hit counter — note the counter exists only
+                for the database backend.</li>
+            <li><strong>Cross-session memory stopped working.</strong> A
+                <code>memory.repo.table_missing</code> warning means <code>memory_items</code> is absent, so
+                the memory stack degrades to "no memory" instead of failing. Its hint names the fix:
+                Settings → Database → <em>ReCreate DB</em>, or re-apply
+                <code>db/migrations/014_memory_items.sql</code> with the per-file <em>Apply</em> button.
+                Memory is only in play at all when <code>pipeline.memory_top_k</code> is greater than 0.</li>
+            <li><strong>The chat stays on "no events yet" although the job finished.</strong> A
+                <code>worker.job.session_mismatch</code> warning means the engine ran under a different
+                session id than the job row expects, so the replay endpoint has nothing to stream for that
+                session — the note in the log line says exactly that.</li>
+            <li><strong>A model call returns HTTP 404.</strong> Retired model ids are the usual cause; the
+                resulting <code>L1_FAILED</code> event carries a hint pointing at the provider's
+                <code>/models</code> endpoint so the id can be corrected in the model list. A
+                <code>MODEL_NOT_FOUND</code> for an id ending in <code>:batch</code> is a different
+                case — such a model is served only through the Batch API (see
+                <a href="#oc-help-batch">Batch mode and :batch models</a>), which the engine now refuses
+                up front rather than at the end of a run.</li>
+            <li><strong>"MySQL server has gone away" (driver codes 2006 / 2013).</strong> The database
+                wrapper detects the dropped connection, reconnects and re-runs the statement once. To make
+                it rarer, raise <code>wait_timeout</code> for the application user and keep
+                <code>pipeline.parallel_l1</code> enabled so L1 calls overlap instead of serializing.</li>
+            <li><strong>A schema-drift banner appears on every page.</strong> A table's live version in
+                <code>app_config</code> differs from the <code>@table-version</code> in
+                <code>db/schema.sql</code>. Apply the pending migrations in Settings → Database.</li>
+            <li><strong><code>analyzer.*</code> warnings.</strong> The request analyzer could not use its
+                live path — <code>analyzer.chat_failed</code>, <code>analyzer.connector_missing</code>,
+                <code>analyzer.connector_lookup_failed</code>, <code>analyzer.response_truncated</code>,
+                <code>analyzer.json_unparsable</code> — and fell back to its heuristic envelope. Runs
+                continue; fix it if the analyzer's provider or model is misconfigured.</li>
+            <li><strong><code>worker.bootstrap.*</code> lines.</strong> The worker could not boot:
+                <code>worker.bootstrap.config_failed</code> (config missing or invalid),
+                <code>worker.bootstrap.no_database</code> (no DSN or the database is unreachable),
+                <code>worker.bootstrap.skill_seed_failed</code> (skill seeding failed — not fatal), or
+                <code>worker.bootstrap.exception</code>. The fatal ones exit with code 4, and systemd
+                restarts the unit after <code>RestartSec</code>.</li>
+        </ul>
+
+        <h3>Exit codes of the maintenance commands</h3>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Code</th><th><code>bin/revoap-worker.php</code></th><th><code>bin/cache-purge.php</code></th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>0</code></td><td>Success (including an empty queue in <code>--once</code> mode).</td><td>Success.</td></tr>
+                    <tr><td><code>1</code></td><td>—</td><td>Generic failure.</td></tr>
+                    <tr><td><code>2</code></td><td>Invoked from the web SAPI.</td><td>Invoked from a web context.</td></tr>
+                    <tr><td><code>3</code></td><td>Help printed.</td><td>Admin token missing, not configured, or a mismatch.</td></tr>
+                    <tr><td><code>4</code></td><td>Fatal bootstrap error.</td><td>No cache backend reachable (neither database nor filesystem).</td></tr>
+                    <tr><td><code>5</code></td><td>—</td><td>Invalid <code>--older-than-days</code> value.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p>Both commands share the same two conveniences: they refuse to run from a web SAPI, and they read
+            the admin token from <code>--token=</code>, from <code>admin.token_env</code> (default
+            <code>REVOAP_ADMIN_TOKEN</code>) or from <code>.admin.key</code> — the token is never echoed.
+            <code>cache-purge.php --status</code> is a dry run and reports what a purge would delete.</p>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-api">
+        <h2>8. API reference</h2>
+
+        <p>Three trust levels. Health and the council surface are public by design — put them behind your
+            own rate limiting if the host is exposed; the operator panels require the admin token; the
+            versioned REST API requires an API key.</p>
+
+        <h3>Health and diagnostics (public)</h3>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Endpoint</th><th>Returns</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>GET /api/health</code></td><td>Liveness, app version, whether the admin token is configured, and a database block.</td></tr>
+                    <tr><td><code>GET /api/health/database</code></td><td>The database block on its own: configured, connected, schema readiness and the list of missing tables.</td></tr>
+                    <tr><td><code>GET /api/health/admin</code></td><td>Whether an admin token is wired up — never the token itself.</td></tr>
+                    <tr><td><code>GET /api/health/worker</code></td><td>The worker diagnostic envelope: execution mode, per-status queue counts, running workers and their heartbeat ages, the resolved retry policy, <code>worker_status</code>, recommendations and the operator commands for this host.</td></tr>
+                    <tr><td><code>GET /api/health/worker/jobs</code></td><td>Job feed — ids, statuses and timings only.</td></tr>
+                    <tr><td><code>GET /api/health/worker/diagnostics</code></td><td>Connector self-test detail with identities masked.</td></tr>
+                    <tr><td><code>GET /api/tabs</code></td><td>Which optional tabs the configuration enables.</td></tr>
+                    <tr><td><code>GET /api/connectors</code></td><td>Active providers, the usable model catalogue, the default pool and the available reasoning levels.</td></tr>
+                    <tr><td><code>GET /api/boot-config</code></td><td>App name, version, build id, debug flag and the pipeline execution mode.</td></tr>
+                    <tr><td><code>GET /api/debug</code></td><td>The sanitized diagnostic snapshot described above.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Council (public)</h3>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Endpoint</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>POST /api/council/jobs</code></td><td>Enqueue a durable run. This is what the UI's Run button uses.</td></tr>
+                    <tr><td><code>GET /api/council/jobs/{id}</code>, <code>/pause</code>, <code>/resume</code>, <code>/cancel</code>, <code>/run-consensus</code></td><td>Inspect and steer a queued or running job. Control is cooperative: cancellation takes effect at the next checkpoint, because an in-flight provider call cannot be aborted.</td></tr>
+                    <tr><td><code>GET /api/council/session/{id}</code>, <code>/events</code>, <code>/stats</code>, <code>/events/stream</code></td><td>Session detail, persisted events and the replay stream the browser subscribes to.</td></tr>
+                    <tr><td><code>GET /api/council/jobs/{id}/timeline</code>, <code>/api/council/session/{id}/job-timeline</code> (+ <code>/export</code>)</td><td>The durable retry and recovery audit trail, as JSON or as JSON/CSV downloads.</td></tr>
+                    <tr><td><code>POST /api/council/run</code>, <code>GET /api/council/stream</code></td><td>The legacy in-request pipeline. Still wired; keep the long proxy timeouts if you use it.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <h3>Operator panels (admin token)</h3>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Prefix</th><th>Notes</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>/api/history/*</code></td><td>Paginated session list, single-session detail, and completion of a still-running session. Also needs the HistoryTab flag and a working database.</td></tr>
+                    <tr><td><code>/api/logs/*</code></td><td>Whitelisted log files only — list, tail (sanitized) and clear. Traversal outside <code>logs/</code> is rejected.</td></tr>
+                    <tr><td><code>/api/security/*</code></td><td>Loopback rules and the environment self-check.</td></tr>
+                    <tr><td><code>/api/settings/*</code></td><td>Providers, models, database, migrations, runtime, cache statistics and purge, API keys, webhooks, worker self-test.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p>Every one of these answers <code>404</code> with the matching <code>*_disabled</code> code when its
+            config flag is off, and <code>503</code> / <code>401</code> when the admin token is missing or
+            wrong — so an unauthenticated probe learns nothing beyond the fact that the feature exists.</p>
+
+        <h3>External REST API (API key)</h3>
+        <p><code>/v1/*</code> is authenticated with a key created on the API tab (<code>rv_…</code>, stored
+            only as a SHA-256 hash) presented as <code>X-API-Key</code>, as a bearer token, or as
+            <code>?api_key=</code>. Keys carry a scope (<code>full</code> can launch and cancel,
+            <code>read</code> only queries) plus per-minute and per-day quotas, and there is a global
+            per-IP budget of 120 requests per minute in front of the key check. Requests over the limit get
+            <code>429</code> with <code>Retry-After</code>.</p>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Endpoint</th><th>Purpose</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td><code>POST /v1/runs</code></td><td>Start a run: asynchronous by default (202 plus polling URLs), synchronous with <code>"async": false</code>, or SSE with <code>"stream": true</code>. Speaks the native, OpenAI and Anthropic dialects (<code>?format=</code>).</td></tr>
+                    <tr><td><code>GET /v1/runs</code>, <code>/v1/runs/{id}</code>, <code>/events</code>, <code>/result</code></td><td>List runs, read one, page through its events, and fetch the finished record (202 while it is still active).</td></tr>
+                    <tr><td><code>POST /v1/runs/{id}/cancel</code></td><td>Request cancellation; 409 when the run is already terminal.</td></tr>
+                    <tr><td><code>GET /v1/models</code>, <code>/v1/usage</code></td><td>Active models, and aggregated usage per period.</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <p>Operator paths are deny-listed for API keys and answer <code>404</code> even with a
+            <code>full</code> scope, so an automation key can never reach the admin surface. Completed runs
+            can also notify an HTTP endpoint: subscriptions are managed on the Webhooks tab and deliveries
+            are signed with <code>X-RevoAp-HMAC-SHA256</code> and retried with a backoff.</p>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-version">
+        <h2>9. Version &amp; build</h2>
+
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Value</th><th>Where it comes from</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Application version</td><td><code>app.version</code> in <code>config.php</code> (default <code>1.0.0</code>), overridable like any other config value.</td></tr>
+                    <tr><td>Build id</td><td>The short (12-character) commit SHA when <code>.git</code> is readable, otherwise the asset-version token (app version plus the newest mtime under <code>assets/</code>) — so a deployment without <code>.git</code> still changes it.</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p>Both values are baked into the shell so the first paint needs no extra request:
+            <code>&lt;meta name="oc-app-version"&gt;</code> and <code>&lt;meta name="oc-build"&gt;</code>. The
+            sidebar's <em>Routes & build</em> block renders the version with the build id in its tooltip,
+            and <code>GET /api/boot-config</code> / <code>GET /api/debug</code> expose the same pair to
+            monitors.</p>
+
+        <p>This build:</p>
+        <pre class="oc-help-pre"><code>RevoAp v{{app_version}}
+build {{build_id}}</code></pre>
+
+        <p>Static assets are requested with a <code>?v=</code> cache-busting token derived from the same
+            values, so a new deployment invalidates browser caches without any manual step — though a tab
+            opened before the deploy can still hold the previous JavaScript module until it is reloaded.</p>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-batch">
+        <h2>10. Batch mode and :batch models</h2>
+
+        <p>Some Bothub models are served only through the provider's <strong>asynchronous Batch
+            API</strong>, and their identifiers carry a <code>:batch</code> suffix (for example
+            <code>gpt-5.6:batch</code>). A batch call is not an ordinary call that happens to be slow: the
+            provider accepts a file of requests, works through it in the background and hands back a file
+            of answers, so there is no synchronous response to wait for.</p>
+
+        <p>The suffix is therefore a <em>mode</em>, not part of the model's name. <code>x</code> and
+            <code>x:batch</code> are one line and one family — the version and family comparisons treat
+            them as the same model — and each list marks the batch form so it is not mistaken for its
+            synchronous twin.</p>
+
+        <ul>
+            <li><strong>In a normal (synchronous) run</strong>, a <code>:batch</code> id is refused before
+                any model is called, with the reason stated. The model pool in the composer refuses it
+                too. Earlier the identifier was accepted, reached the provider, and surfaced as a
+                <code>404 MODEL_NOT_FOUND</code> at the end of a run that had already paid for every
+                other layer.</li>
+            <li><strong>In batch mode</strong> a <code>:batch</code> id is exactly what the run is for,
+                and both the plain id and its batch form are offered.</li>
+        </ul>
+
+        <h3>Running a batch from Chat</h3>
+        <ol>
+            <li>Tick <strong>Run via Batch API</strong> in the composer. The toggle is disabled with a
+                stated reason when the deployment is not ready for it — no Bothub key, or the batch
+                surface could not be resolved.</li>
+            <li>Send the query. Only the <strong>L1 fan-out</strong> is batched: every L1 call becomes
+                one line of the uploaded JSONL file, keyed by a deterministic <code>custom_id</code>.
+                L2, L3 and L4 depend on the L1 answers, so they run normally as soon as the results
+                arrive — the consensus itself is not batched.</li>
+            <li>Watch the composer's batch card: the phase, the provider's status, how many requests went
+                out, how long ago, the 24-hour completion window, and how many rows failed or came back
+                with no answer. <strong>Cancel batch</strong> asks the provider to stop; the request is
+                delivered on the next worker pickup, and the run only becomes <code>cancelled</code> once
+                the provider has actually been told.</li>
+        </ol>
+
+        <p>The worker never blocks while a batch is outstanding: the job parks itself on
+            <code>next_run_at</code> and wakes up for the poll, so the queue keeps draining. Polls are 30
+            seconds apart for batches of up to 1000 rows and 150 seconds above that, which is the
+            provider's own sizing rule. The batch state is persisted with the job, so an outstanding batch
+            survives a worker restart.</p>
+
+        <p>A run waiting on the provider is <em>neither finished nor failed</em>. History shows it as
+            <strong>awaiting batch</strong>, with the same readout as the Chat card, instead of as a
+            <code>running</code> row that looks stalled.</p>
+
+        <h3>Partial failures</h3>
+        <p>Row outcomes are kept separately. A line the provider rejected carries its own
+            <code>status_code</code> and body; a request that came back with no answer at all is reported
+            as missing rather than silently dropped. Rows are matched by <code>custom_id</code> and never
+            by position, so a provider that reorders its output file changes nothing. A batch in which
+            some rows failed still feeds the consensus with the rows that did succeed, and the counts are
+            shown in the card.</p>
+
+        <h3>Which models can be batched</h3>
+        <p>The list of batch-capable models is the provider's own answer
+            (<code>GET /api/council/batch/models</code>, backed by the provider's
+            <code>GET /batches/models</code>), not a list shipped with the app. The answer is
+            three-valued — batch-capable, not batch-capable, or <strong>unknown</strong> — and unknown
+            only ever means "the provider could not be asked", never "this model does not support it".
+            When the capability call is unavailable the composer says so, and no model is hidden on the
+            strength of a guess.</p>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-prompt-cache">
+        <h2>11. Prompt caching</h2>
+
+        <p>A consensus run asks the same models the same base-file + profile + role prompt again and
+            again: every role in the L1 fan-out shares one long, unchanged prefix, and paying full input
+            price for that prefix on every call is the largest avoidable cost of a run. Prompt caching
+            lets the provider keep that prefix and bill the repeat as a cheap read. RevoAp enables it
+            where the provider documents it and surfaces the figures the provider returns.</p>
+
+        <div class="oc-help-note">
+            <p>This is the <em>provider-side</em> prefix cache, not the response cache. The response
+            cache (Settings → Cache) stores finished answers in RevoAp and skips the network call
+            entirely; prompt caching changes what the provider charges for a call it still performs. They
+            are switched on and off separately.</p>
+        </div>
+
+        <h3>Who caches, and how</h3>
+        <div class="oc-help-table-wrap">
+            <table class="oc-help-table">
+                <thead>
+                    <tr><th>Family</th><th>Caching</th><th>Minimum prompt</th><th>Cost</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>OpenAI</td><td>Automatic — nothing to send</td><td>1024 tokens</td><td>Write free, read 0.25–0.5×</td></tr>
+                    <tr><td>Grok (xAI)</td><td>Automatic</td><td>—</td><td>Write free, read 0.25×</td></tr>
+                    <tr><td>Moonshot</td><td>Automatic</td><td>—</td><td>Write free, read 0.25×</td></tr>
+                    <tr><td>Groq</td><td>Automatic</td><td>—</td><td>Write free, read 0.5×</td></tr>
+                    <tr><td>DeepSeek</td><td>Automatic</td><td>—</td><td>Write 1×, read 0.1×</td></tr>
+                    <tr><td>Anthropic</td><td>Explicit, via <code>cache_control</code> breakpoints — at most 4</td><td>—</td><td>Write 1.25×, read 0.1×</td></tr>
+                    <tr><td>Gemini (via Bothub)</td><td>Cached implicitly by the provider, but enabled from RevoAp with explicit breakpoints; Bothub honours only the last one</td><td>2048 (2.5 Pro) / 1028 (2.5 Flash)</td><td>No write or storage cost, read 0.25×</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <p>For the explicit families the breakpoint goes on the <em>last stable</em> message of the prefix
+            — the end of the system block, not the end of the request — so the dynamic part of the prompt
+            (the query, and any memory recall) stays outside the cached region. Raising
+            <code>prompt_cache.max_breakpoints</code> moves it further back through the system messages,
+            up to the documented ceiling of four. A prefix shorter than the size guard gets no breakpoint
+            at all, because caching below the provider's documented minimum would cost a round trip and
+            save nothing; the guard is raised to a family's minimum and never lowered.</p>
+
+        <h3>How long it lives, and what it costs</h3>
+        <p>The cache lives 5 minutes by default, or 1 hour if you choose it
+            (<code>prompt_cache.ttl</code>, either <code>5m</code> or <code>1h</code>; anything else is
+            coerced back to <code>5m</code>). A one-hour entry is written at the provider's own premium on
+            the families that charge for writes. Bothub is the only connector that documents a caching
+            surface, so requests to every other provider keep the payload they had before, byte for
+            byte.</p>
+
+        <h3>Turning it on and off</h3>
+        <p>Settings → <strong>Prompt caching</strong> carries the switch, the TTL, the breakpoint count
+            and the size guard, and renders the same capability table the request builder reads, so the
+            card cannot drift from the behaviour. It saves through
+            <code>POST /api/settings/prompt-cache</code>, and an undocumented TTL is refused rather than
+            quietly coerced. The master switch is <code>prompt_cache.enabled</code>: setting it to
+            <code>false</code> in <code>config.php</code> or <code>.config.php</code> turns the whole
+            feature off in one step and restores the legacy request body exactly.</p>
+
+        <h3>Reading the statistics</h3>
+        <ul>
+            <li><strong>Chat</strong> shows the cache figures per step and per run, <strong>History</strong>
+                per run and per stage, and the <strong>Statistics</strong> page rolls a run up. The
+                figures are the tokens read from the cache, the tokens written to it, and the saving the
+                provider reports through <code>cache_discount</code>.</li>
+            <li><strong>A missing figure is not a miss.</strong> A provider that reports nothing about
+                caching leaves the values empty, and the UI renders "no cache data" rather than a zero — a
+                zero would read as "the cache was consulted and did not help", which is a different fact
+                and often a false one.</li>
+            <li><strong>No statistics at all</strong> usually means the provider returned no usage block.
+                Check that the family is listed as caching above, that the prompt prefix clears that
+                family's minimum size, and that the model belongs to the family you expect.</li>
+        </ul>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-catalogue">
+        <h2>12. Model catalogue and Actualize</h2>
+
+        <p>The <em>catalogue</em> is every model RevoAp knows about; the <em>pool</em> is the subset a run
+            actually calls. <strong>Actualize</strong> (Models tab) reconciles the two against what the
+            provider really serves.</p>
+
+        <h3>What Actualize does</h3>
+        <ol>
+            <li><strong>Import models</strong> (<code>importing_models</code>) — fetch the provider's live
+                list from the chosen source (<code>bothub</code> or <code>openrouter</code>) and merge it
+                into the catalogue. This runs in the worker and comes first, because every later stage
+                reasons about the list it produces. The report names what was fetched, added, already
+                present and discarded, and a failed import fails the run loudly instead of continuing on
+                the previous list.</li>
+            <li><strong>Analysing models</strong> (<code>analysing_models</code>) — ask the analyzer model
+                which models should take which role.</li>
+            <li><strong>Assigning models to consensuses</strong> (<code>assigning_presets</code>) — write
+                the consensus presets and the linked roles.</li>
+            <li><strong>Result</strong> (<code>finish</code>) — publish the verdict, or fail on the stage
+                that died.</li>
+        </ol>
+
+        <p>The run is all-or-nothing: a snapshot of the pre-run state is written before anything is
+            changed.</p>
+
+        <h3>The catalogue ceiling</h3>
+        <p>A provider can serve more models than a list can usefully hold.
+            <code>models.catalog.max_rows</code> (in <code>config.php</code> or <code>.config.php</code>)
+            sets the ceiling — default <code>1000</code>, and <code>0</code> for no ceiling at all. It is
+            applied once, when the catalogue is persisted and merged, and it is not a blunt cut: rows the
+            pool, a preset or a linked role refers to are never discarded, and the rest are ranked as
+            "newest release in its family", interleaved across families so one prolific provider cannot
+            fill the list by itself. A model the provider no longer serves is marked inactive
+            (<code>stale</code>) with the reason, rather than kept and offered silently.</p>
+
+        <p>The ceiling is a real constraint, not a cosmetic one. The pool, the presets and the linked
+            roles must all be <em>active catalogue rows</em>: a run that cannot satisfy that fails, rather
+            than reporting success with nothing to call. When a ceiling is genuinely too low for the pool
+            the run's own repair pass says which entries it removed and why.</p>
+
+        <h3>Which model runs the assignment</h3>
+        <p>Actualize uses its own model, <code>models.actualize.analyzer</code>, chosen on the Actualize
+            card. When it is not set the section <em>inherits</em> <code>analyzer.provider</code> /
+            <code>analyzer.model</code> and says that it did — it never writes them. The separation
+            matters: <code>analyzer.*</code> classifies every incoming query for the L0 router, so
+            pointing Actualize at a stronger (or cheaper) model must not silently re-point the
+            classifier.</p>
+
+        <h3>When it fails</h3>
+        <p>A failed run is reported as an error, on the stage it died in, and the card names the run it is
+            describing (job id and times) so a verdict can never be attributed to the wrong run. Pressing
+            <em>Actualize</em> again clears the previous verdict immediately, instead of leaving the last
+            run's green stages on screen while the worker starts the new one.</p>
+
+        <h3>Rolling back</h3>
+        <p><strong>Roll back to the last snapshot</strong> restores the state saved before the last run —
+            the catalogue rows, every preset definition and the model pool the sidebar reported — in one
+            step. There is one snapshot, and it belongs to the last run: rolling back after a second
+            actualization restores that second run's starting point, not the first one's.</p>
+    </section>
+
+    <section class="oc-help-section" id="oc-help-system-health">
+        <h2>13. System health</h2>
+
+        <p><strong>Settings — System health</strong> is one screen for the failure classes that used to be
+            found by hand: the worker running older code than what is deployed, a migration that was never
+            applied, write permissions that broke, a stale model catalogue, a pool that drifted out of the
+            active catalogue, a database connection that was lost. Each check says what is wrong and offers
+            the button that answers it.</p>
+
+        <h3>What is checked</h3>
+        <ul>
+            <li><strong>Worker code version</strong> — the version the running worker loaded against the code on
+                disk (<code>code_state</code>). A PHP process keeps the classes it loaded at start-up, so a
+                worker started before a deploy runs the old code with no syntax error anywhere.</li>
+            <li><strong>Migrations and schema version</strong> — pending migration files, and the version
+                recorded in the database against the one <code>db/schema.sql</code> declares.</li>
+            <li><strong>Writable directories</strong> — <code>var/config</code>, <code>runtime</code>,
+                <code>cache</code> and <code>logs</code>, with the mode, the owner and the user the PHP process
+                runs as.</li>
+            <li><strong>Model catalogue freshness</strong> — how many rows are active and when the catalogue was
+                last actualized.</li>
+            <li><strong>Pool and roles inside the active catalogue</strong> — every row the pool, the domain
+                presets and the three linked roles name has to exist among the active catalogue rows.</li>
+            <li><strong>Database connections</strong> — whether a handle is held right now, and how many times
+                the connection was lost.</li>
+        </ul>
+
+        <h3>How a repair works</h3>
+        <p>Every repair is one of the endpoints the Settings cards already use
+            (<code>POST /api/settings/migrations/apply</code>, <code>POST /api/worker/restart</code>,
+            <code>POST /api/models/actualize</code>). It asks for confirmation first, runs behind the admin
+            gate, is idempotent and is written to the log. Afterwards the panel reads the state again and prints
+            the fresh verdict for that check (<em>State re-read at …</em>) — so "fixed" is something you can
+            see, not something the panel claims. With the admin gate closed the server's refusal is shown
+            verbatim (<code>Refused (HTTP 401): admin token required</code>); the panel never reports a repair
+            it did not make.</p>
+
+        <h3>What the panel will not do</h3>
+        <p>Anything that lives outside the application is reported as a command and never executed:
+            <code>chown</code> / <code>chmod</code> for a directory the PHP user cannot write, and
+            <code>systemctl</code> for a service that has to be restarted. The panel needs no root and no sudo,
+            and it never runs a shell command built from request data.</p>
+
+        <h3>First-run checklist</h3>
+        <p>A fresh installation also gets a compact checklist — admin key, DSN, schema, provider keys,
+            catalogue, worker, writable directories — collapsed under the checks. It is read from a public
+            endpoint, so it is available on the locked screen as well, before the admin token is entered.</p>
+    </section>
+</section>

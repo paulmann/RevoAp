@@ -1,0 +1,229 @@
+/* worker-status.css — v1.8.45 — header worker-status indicator.
+ *
+ * The trigger button reuses `.oc-button-ghost` (see app.css) so it sits
+ * visually with #theme-toggle; this file only adds the lane colour, the
+ * reused pipeline spinner, and the tooltip panel.
+ *
+ * Everything is driven by theme variables (--color-*, --shadow-sm) so the
+ * indicator renders correctly in both themes; no hard-coded colours.
+ */
+
+.oc-worker-status {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    min-width: 2.1rem;
+    line-height: 1;
+}
+
+/* ---- lane dot -------------------------------------------------------- */
+.oc-worker-status-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 0.85rem;
+    height: 0.85rem;
+    border-radius: 50%;
+    font-size: 0.7rem;
+    font-weight: 700;
+    background: var(--color-text-secondary);
+    color: var(--color-bg-primary);
+}
+
+.oc-worker-status-dot[data-lane="free"] {
+    background: var(--color-success);
+    border: 2px solid color-mix(in srgb, var(--color-success) 35%, transparent);
+    background-clip: padding-box;
+}
+
+.oc-worker-status-dot[data-lane="waiting"] {
+    background: var(--color-warning);
+    border: 2px solid color-mix(in srgb, var(--color-warning) 35%, transparent);
+    background-clip: padding-box;
+}
+
+.oc-worker-status-dot[data-lane="problem"] {
+    background: var(--color-error);
+    color: var(--color-bg-primary);
+}
+
+/* Busy lane: the spinner pipeline.css ships for the "Waiting for worker"
+ * activity row (.oc-activity-spinner, defined together with the shared
+ * rotation animation there). Only the size is adjusted so it fits the
+ * header control; no animation is redefined in this file. */
+.oc-worker-status-spinner {
+    width: 0.9rem;
+    height: 0.9rem;
+    border-width: 2px;
+}
+
+/* ---- tooltip -------------------------------------------------------- */
+.oc-worker-status-tip {
+    position: fixed;
+    z-index: 60;
+    max-width: 520px;
+    padding: 0.6rem 0.7rem;
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    box-shadow: var(--shadow-sm);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+/* Required: the class above overrides the UA's [hidden] display rule. */
+.oc-worker-status-tip[hidden] { display: none; }
+
+.oc-worker-status-tip-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    padding-bottom: 0.35rem;
+    margin-bottom: 0.35rem;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.oc-worker-status-tip-eyebrow {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-text-secondary);
+    font-weight: 700;
+}
+
+.oc-worker-status-tip-lane {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-weight: 700;
+}
+.oc-worker-status-tip-lane[data-lane="free"]    { color: var(--color-success); border-color: var(--color-success); }
+.oc-worker-status-tip-lane[data-lane="waiting"] { color: var(--color-warning); border-color: var(--color-warning); }
+.oc-worker-status-tip-lane[data-lane="busy"]    { color: var(--color-accent);  border-color: var(--color-accent); }
+.oc-worker-status-tip-lane[data-lane="problem"] { color: var(--color-error);   border-color: var(--color-error); }
+
+.oc-worker-status-tip-sub {
+    flex-basis: 100%;
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+}
+
+.oc-worker-status-tip-body {
+    display: grid;
+    gap: 0.5rem;
+    max-height: min(60vh, 460px);
+    overflow-y: auto;
+}
+
+.oc-worker-status-section-title {
+    margin: 0 0 0.2rem;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--color-text-secondary);
+}
+
+.oc-worker-status-note {
+    color: var(--color-text-secondary);
+    font-size: 0.78rem;
+    margin-bottom: 0.2rem;
+}
+
+/* ---- key/value rows -------------------------------------------------- */
+.oc-worker-status-kv {
+    display: grid;
+    grid-template-columns: minmax(9rem, auto) 1fr;
+    gap: 0.1rem 0.6rem;
+    margin: 0;
+}
+.oc-worker-status-kv-row { display: contents; }
+.oc-worker-status-kv dt { color: var(--color-text-secondary); }
+.oc-worker-status-kv dd { margin: 0; word-break: break-word; }
+
+/* ---- lists (checks / workers / jobs) --------------------------------- */
+.oc-worker-status-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.3rem;
+}
+
+.oc-worker-status-item,
+.oc-worker-status-job {
+    display: grid;
+    grid-template-columns: 0.9rem auto 1fr;
+    align-items: baseline;
+    gap: 0.35rem;
+}
+
+.oc-worker-status-job { grid-template-columns: 1fr; }
+
+.oc-worker-status-mark { font-weight: 700; }
+.oc-worker-status-item[data-ok="true"]  .oc-worker-status-mark { color: var(--color-success); }
+.oc-worker-status-item[data-ok="false"] .oc-worker-status-mark { color: var(--color-error); }
+.oc-worker-status-item[data-ok="unknown"] .oc-worker-status-mark { color: var(--color-text-secondary); }
+
+.oc-worker-status-item-label { font-weight: 600; }
+.oc-worker-status-item-text { color: var(--color-text-primary); word-break: break-word; }
+.oc-worker-status-item-meta,
+.oc-worker-status-item-meta * { color: var(--color-text-secondary); font-size: 0.78rem; }
+
+.oc-worker-status-badge {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 0.02rem 0.35rem;
+    border-radius: 999px;
+    border: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    justify-self: start;
+}
+.oc-worker-status-job[data-status="running"] .oc-worker-status-badge    { border-color: var(--color-warning); color: var(--color-warning); }
+.oc-worker-status-job[data-status="queued"] .oc-worker-status-badge     { border-color: var(--color-accent);  color: var(--color-accent); }
+.oc-worker-status-job[data-status="completed"] .oc-worker-status-badge  { border-color: var(--color-success); color: var(--color-success); }
+.oc-worker-status-job[data-status="failed"] .oc-worker-status-badge,
+.oc-worker-status-job[data-status="stale"] .oc-worker-status-badge      { border-color: var(--color-error);   color: var(--color-error); }
+
+.oc-worker-status-job-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.oc-worker-status-fix {
+    display: grid;
+    gap: 0.15rem;
+}
+
+.oc-worker-status-cmd {
+    display: block;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 5px;
+    padding: 0.15rem 0.35rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    word-break: break-all;
+    white-space: pre-wrap;
+}
+
+/* ---- footer ---------------------------------------------------------- */
+.oc-worker-status-tip-foot {
+    display: grid;
+    gap: 0.1rem;
+    margin-top: 0.4rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-secondary);
+    font-size: 0.74rem;
+}
+.oc-worker-status-foot-warn { color: var(--color-warning); }

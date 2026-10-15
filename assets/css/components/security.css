@@ -1,0 +1,144 @@
+/* Security tab — IP whitelist/blacklist editor and runtime checklist.
+ * Reuses oc-button / oc-alert / oc-input from app.css; structure mirrors
+ * the Settings tab so the two feel like siblings. */
+
+.oc-security {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px 0;
+}
+
+.oc-security-banner {
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.oc-security-banner-info    { background: var(--color-accent-bg); }
+.oc-security-banner-warn    { background: var(--color-warning-bg);  border-color: var(--color-warning); }
+.oc-security-banner-danger  { background: var(--color-error-bg); border-color: var(--color-error); }
+.oc-security-banner-success { background: var(--color-success-bg);    border-color: var(--color-success); }
+
+.oc-security-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+}
+
+.oc-security-card {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 14px;
+    background: var(--color-bg-elevated);
+}
+
+.oc-security-card h3 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+}
+
+.oc-security-card p.oc-muted {
+    margin: 0 0 10px;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.oc-security-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    font-size: 0.92rem;
+}
+
+.oc-security-list {
+    width: 100%;
+    min-height: 120px;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+    padding: 8px 10px;
+    background: var(--color-bg-code);
+    color: var(--color-text-code);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    resize: vertical;
+}
+
+.oc-security-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.oc-security-status {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 12px;
+    font-size: 0.85rem;
+}
+
+.oc-security-status > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--color-border);
+}
+
+.oc-security-status > div:last-child { border-bottom: 0; }
+
+.oc-security-flag-on  { color: var(--color-success);  font-weight: 600; }
+.oc-security-flag-off { color: var(--color-text-secondary); }
+.oc-security-flag-warn{ color: var(--color-warning); font-weight: 600; }
+.oc-security-flag-bad { color: var(--color-error); font-weight: 600; }
+
+.oc-security-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+}
+
+.oc-security-row label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    min-width: 130px;
+}
+
+.oc-security-row input[type="text"],
+.oc-security-row input[type="number"] {
+    flex: 1;
+    min-width: 120px;
+}
+
+.oc-security-test {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.oc-security-test-result {
+    font-size: 0.85rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+}
+
+/* Status text on a status tint uses the -text tokens: the plain status
+   colours are tuned for a page surface and drop under AA once the plaque
+   tints the background towards them (light success 4.41:1, dark error
+   4.02:1). See themes/light.css / themes/dark.css for the measurements. */
+.oc-security-test-allow { background: var(--color-success-bg); color: var(--color-success-text); }
+.oc-security-test-deny  { background: var(--color-error-bg);   color: var(--color-error-text); }
+
+@media (max-width: 720px) {
+    .oc-security-grid,
+    .oc-security-status {
+        grid-template-columns: 1fr;
+    }
+}

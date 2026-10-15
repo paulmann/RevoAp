@@ -1,0 +1,224 @@
+/* models.css — v1.8.49 Models tab.
+ *
+ * The tab reuses the Settings shell wholesale (`.oc-settings` grid,
+ * `.oc-card`, `.oc-models-table`, `.oc-status`, `.oc-alert`, and the
+ * `.oc-settings-nav` sticky strip), so everything here is specific to the
+ * one thing the tab adds: the "Actualize linked models" progress list.
+ *
+ * Stage colours are the palette's own status colours — success for a
+ * finished stage, accent for the running one — so both themes work
+ * without a per-theme rule and no colour is hard-coded.
+ */
+
+.oc-actualize-stages {
+    list-style: none;
+    margin: 0.75rem 0 0.5rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    font-size: 0.85rem;
+}
+.oc-actualize-stage {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--color-text-secondary);
+}
+.oc-actualize-stage-dot {
+    flex: 0 0 auto;
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    border: 2px solid var(--color-border);
+    background: transparent;
+}
+.oc-actualize-stage-pending .oc-actualize-stage-dot {
+    border-color: var(--color-border);
+}
+.oc-actualize-stage-running {
+    color: var(--color-text-primary);
+}
+.oc-actualize-stage-running .oc-actualize-stage-dot {
+    border-color: var(--color-accent);
+    background: var(--color-accent);
+}
+.oc-actualize-stage-done {
+    color: var(--color-text-primary);
+}
+.oc-actualize-stage-done .oc-actualize-stage-dot {
+    border-color: var(--color-success);
+    background: var(--color-success);
+}
+
+/* v1.8.51 — the stage a run died in. A terminal `problems` verdict used to
+ * paint every row with the success colour, so a failed run and a finished
+ * one looked identical at a glance; the palette's own error tokens keep
+ * the meaning readable in both themes without a per-theme rule. */
+.oc-actualize-stage-failed {
+    color: var(--color-error-text);
+    font-weight: 600;
+}
+.oc-actualize-stage-failed .oc-actualize-stage-dot {
+    border-color: var(--color-error);
+    background: var(--color-error);
+}
+
+.oc-actualize-summary:empty {
+    display: none;
+}
+.oc-actualize-summary {
+    margin-top: 0.5rem;
+}
+.oc-actualize-warnings,
+.oc-actualize-linked,
+.oc-actualize-assigned {
+    margin: 0.35rem 0 0.5rem;
+    padding-left: 1.25rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+.oc-actualize-linked,
+.oc-actualize-assigned {
+    list-style: none;
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+/* ===== Filter bars (v1.8.50) ==========================================
+ * Two surfaces list models — this tab's catalogue table and the Chat
+ * sidebar's consensus pool — and both grew the same two controls: a text
+ * filter and one checkbox. The rules below cover the tab; the sidebar's
+ * own block lives next to the selector widget in chat.css.
+ *
+ * Colours are the palette's own tokens so both themes apply without a
+ * per-theme rule.
+ */
+.oc-models-filter {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0.5rem 0 0.75rem;
+}
+.oc-models-filter-input {
+    flex: 1 1 14rem;
+    min-width: 0;
+    max-width: 22rem;
+    padding: 0.3rem 0.5rem;
+    font: inherit;
+    font-size: 0.85rem;
+    color: var(--color-text-primary);
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+}
+.oc-models-filter-input:focus {
+    outline: none;
+    border-color: var(--color-accent);
+}
+.oc-models-filter-newer {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+}
+/* A row the filter hides: it stays in the table (and therefore in the next
+   save), it is only taken out of sight. */
+.oc-models-table tr[hidden] {
+    display: none;
+}
+#oc-models-filter-note {
+    margin: 0.35rem 0 0.5rem;
+}
+
+/* ===== Batch-only identifiers (v1.8.52) ===============================
+ * Some providers serve a second, asynchronous surface for the same model
+ * and spell it as a suffix on the id — `gpt-4o:batch` (the Batch API:
+ * upload → create → poll → download). That suffix says HOW the id is
+ * served, not WHAT the model is, so such an id can be catalogued and shown
+ * but never run in the synchronous consensus pool.
+ *
+ * The marker is one class, rendered by assets/js/model-selector.js
+ * (batchBadgeNode) and used by BOTH model lists — the Chat sidebar's rows
+ * and this tab's catalogue table — and inside a row popup. Warning colours
+ * are the palette's own, so both themes apply without a per-theme rule.
+ * The tooltip carries the reason, so a disabled checkbox is never a dead
+ * end.
+ */
+.oc-model-batch-badge {
+    flex: 0 0 auto;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--color-warning);
+    background: var(--color-warning-bg);
+    border: 1px solid var(--color-warning);
+    border-radius: 4px;
+    padding: 0 0.25rem;
+    line-height: 1.4;
+    cursor: help;
+    white-space: nowrap;
+}
+/* Inside the popup the id is not pickable, so it reads as unavailable
+   rather than as another option the pointer can land on. */
+.oc-model-option-batch {
+    color: var(--color-text-secondary);
+    cursor: not-allowed;
+}
+
+/* ===== The Actualize section's own controls (v1.8.53) =================
+ * Two choices the operator makes before pressing the button: which
+ * provider catalogue the run imports first, and which model answers this
+ * section's assignment calls. Both are plain form controls, so nothing
+ * here invents a widget — the picker is the same `.oc-model-*` combobox
+ * the Chat sidebar uses (see model-selector.js), which is why only the
+ * layout around it is styled.
+ *
+ * The in-effect sentence is deliberately not a `.oc-status`: it is a
+ * permanent description of a setting, not the outcome of an action, and
+ * colouring it like a verdict would make "which model runs" read as
+ * "what happened".
+ */
+.oc-actualize-controls {
+    margin-top: 0.75rem;
+}
+.oc-model-picker-host {
+    max-width: 24rem;
+}
+.oc-model-picker {
+    width: 100%;
+}
+/* The trigger fills the field so the picker lines up with the select
+   beside it rather than hugging its own label. */
+.oc-model-picker .oc-model-select-wrap,
+.oc-model-picker .oc-model-trigger {
+    width: 100%;
+}
+#oc-actualize-analyzer-status {
+    margin: 0.5rem 0 0.25rem;
+}
+.oc-actualize-reasons {
+    margin: 0.35rem 0 0.5rem;
+    list-style: none;
+    padding-left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+/* v1.9.x - preset export/import bar (item 12). */
+.oc-presets-transfer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+}
+.oc-presets-transfer .oc-muted {
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+

@@ -1,0 +1,180 @@
+/* API tab - external REST API keys (rv_*) management.
+ * Reuses oc-button / oc-input / theme tokens from app.css; the
+ * structure mirrors the Security tab so the panel feels like a
+ * sibling. Plaintext key reveal uses a monospace code box. */
+
+.oc-api {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 12px 0;
+}
+
+.oc-api-banner {
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.oc-api-banner-info    { background: var(--color-accent-bg); }
+.oc-api-banner-warn    { background: var(--color-warning-bg); border-color: var(--color-warning); }
+.oc-api-banner-danger  { background: var(--color-error-bg);   border-color: var(--color-error); }
+.oc-api-banner-success { background: var(--color-success-bg); border-color: var(--color-success); }
+
+.oc-api-grid {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+.oc-api-card {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 14px;
+    background: var(--color-bg-elevated);
+}
+
+.oc-api-card h3 {
+    margin: 0 0 10px;
+    font-size: 1rem;
+}
+
+.oc-api-card p.oc-muted {
+    margin: 0 0 10px;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.oc-api-form-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.oc-api-form-row label {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    min-width: 92px;
+}
+
+.oc-api-form-row input[type="text"],
+.oc-api-form-row input[type="number"],
+.oc-api-form-row select {
+    flex: 1;
+    min-width: 120px;
+}
+
+.oc-api-copy-note {
+    font-size: 0.82rem;
+    color: var(--color-warning);
+}
+
+.oc-api-key {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 8px;
+    border-bottom: 1px dashed var(--color-border);
+}
+
+.oc-api-key:last-child { border-bottom: 0; }
+
+.oc-api-key-main {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.oc-api-key-name {
+    font-size: 0.92rem;
+    font-weight: 600;
+}
+
+.oc-api-key-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: 0.78rem;
+    color: var(--color-text-secondary);
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+}
+
+.oc-api-key-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.oc-api-key-actions .oc-button {
+    font-size: 0.8rem;
+    padding: 4px 10px;
+}
+
+.oc-api-stats {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    font-size: 0.85rem;
+}
+
+.oc-api-stat {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    text-align: center;
+    background: var(--color-bg-elevated);
+}
+
+.oc-api-stat b {
+    display: block;
+    font-size: 1.15rem;
+}
+
+.oc-api-reveal {
+    margin-top: 10px;
+    border: 1px solid var(--color-warning);
+    border-radius: 6px;
+    background: var(--color-bg-code);
+    padding: 10px;
+}
+
+.oc-api-reveal-title {
+    font-size: 0.82rem;
+    color: var(--color-warning);
+    margin-bottom: 6px;
+}
+
+.oc-api-reveal code {
+    display: block;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.85rem;
+    color: var(--color-text-code);
+    word-break: break-all;
+    user-select: all;
+}
+
+.oc-api-code-example {
+    width: 100%;
+    font-family: ui-monospace, "SF Mono", Menlo, Monaco, Consolas, monospace;
+    font-size: 0.8rem;
+    line-height: 1.5;
+    padding: 10px;
+    background: var(--color-bg-code);
+    color: var(--color-text-code);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre;
+}
+
+@media (max-width: 900px) {
+    .oc-api-grid { grid-template-columns: 1fr; }
+    .oc-api-stats { grid-template-columns: repeat(2, 1fr); }
+}

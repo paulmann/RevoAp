@@ -1,0 +1,5 @@
+# Deny direct access to cached LLM responses.
+# These files contain serialized model output and should never be
+# served publicly even if the project root happens to be the
+# document root.
+Require all denied

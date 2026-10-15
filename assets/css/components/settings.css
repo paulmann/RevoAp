@@ -1,0 +1,568 @@
+/* Settings tab — admin-only configuration panel.
+   Dark-theme parity with the rest of the chat surface; uses the same
+   --color-* tokens so it inherits the active theme. */
+
+.oc-tab {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid transparent;
+    border-radius: 6px;
+    padding: 0.35rem 0.7rem;
+    font: inherit;
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+.oc-tab:hover  { color: var(--color-text-primary); border-color: var(--color-border); }
+.oc-tab-active { color: var(--color-text-primary); background: var(--color-bg-surface); border-color: var(--color-border); }
+
+.oc-settings {
+    display: grid;
+    gap: 1.25rem;
+    padding-top: 0.5rem;
+    max-width: 920px;
+}
+
+.oc-settings h1 { margin: 0 0 0.25rem 0; font-size: 1.25rem; }
+.oc-settings h2 { margin: 0 0 0.5rem 0;  font-size: 1.05rem; }
+.oc-settings h3 { margin: 0 0 0.4rem 0;  font-size: 0.95rem; color: var(--color-text-secondary); }
+
+.oc-card {
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    padding: 1rem 1.1rem;
+}
+.oc-card + .oc-card { margin-top: 0; }
+
+.oc-field {
+    display: grid;
+    gap: 0.3rem;
+    margin-bottom: 0.75rem;
+}
+.oc-field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+}
+@media (max-width: 720px) {
+    .oc-field-row { grid-template-columns: 1fr; }
+}
+
+.oc-field label,
+.oc-field .oc-label {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+.oc-field input[type="text"],
+.oc-field input[type="number"],
+.oc-field input[type="password"],
+.oc-field input[type="url"],
+.oc-field select,
+.oc-field textarea {
+    width: 100%;
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.45rem 0.6rem;
+    font-family: inherit;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+.oc-field input:focus,
+.oc-field select:focus,
+.oc-field textarea:focus {
+    outline: 2px solid var(--color-accent);
+    border-color: transparent;
+}
+.oc-field-hint { color: var(--color-text-secondary); font-size: 0.8rem; }
+/* v1.8.33: dropdown options need an explicit background/text colour
+   so a dark-theme select never renders dark-on-dark on browsers that
+   use the page colour for the popup (Chromium / Firefox). */
+.oc-field select option {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+}
+
+.oc-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-top: 0.6rem;
+}
+.oc-actions .oc-status { font-size: 0.85rem; color: var(--color-text-secondary); margin-left: 0.4rem; }
+
+.oc-button-secondary {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.45rem 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+.oc-button-secondary:hover { border-color: var(--color-accent); }
+.oc-button-secondary:disabled { opacity: 0.6; cursor: not-allowed; }
+.oc-button-danger {
+    background: transparent;
+    color: var(--color-error);
+    border: 1px solid var(--color-error);
+    border-radius: 6px;
+    padding: 0.45rem 0.8rem;
+    cursor: pointer;
+}
+
+.oc-alert {
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.75rem;
+    background: var(--color-bg-surface);
+}
+.oc-alert-warn { border-color: var(--color-warning); }
+.oc-alert-error { border-color: var(--color-error); color: var(--color-error); }
+.oc-alert-ok { border-color: var(--color-success); }
+
+.oc-models-table,
+.oc-migrations-table,
+.oc-worker-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.oc-models-table th,
+.oc-models-table td,
+.oc-migrations-table th,
+.oc-migrations-table td,
+.oc-worker-table th,
+.oc-worker-table td {
+    text-align: left;
+    padding: 0.4rem 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+.oc-models-table th,
+.oc-migrations-table th,
+.oc-worker-table th {
+    color: var(--color-text-secondary);
+    font-weight: 500;
+}
+.oc-models-table input[type="text"],
+.oc-models-table input[type="number"],
+.oc-models-table input[type="checkbox"],
+.oc-models-table select {
+    background: var(--color-bg-primary);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.25rem 0.4rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+.oc-models-table input[type="checkbox"] {
+    accent-color: var(--color-accent);
+    padding: 0;
+}
+/* The recommended-models dropdown is a sibling of the models table
+   inside the same Models card; keep it readable on dark theme without
+   touching light-theme styling. Light-theme inherits the same tokens
+   so contrast remains correct. */
+.oc-card select,
+.oc-card option {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+}
+.oc-card select {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.35rem 0.55rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+.oc-pill {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    background: var(--color-bg-surface);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+}
+.oc-pill-ok    { color: var(--color-success); border-color: var(--color-success); }
+.oc-pill-warn  { color: var(--color-warning); border-color: var(--color-warning); }
+.oc-pill-error { color: var(--color-error);   border-color: var(--color-error); }
+
+.oc-mono {
+    font-family: ui-monospace, Menlo, Consolas, monospace;
+    font-size: 0.8rem;
+    color: var(--color-text-secondary);
+}
+
+.oc-checkbox {
+    display: inline-flex;
+    gap: 0.4rem;
+    align-items: center;
+    font-size: 0.85rem;
+}
+.oc-checkbox input { accent-color: var(--color-accent); }
+
+.oc-settings-locked {
+    text-align: center;
+    padding: 2rem 1rem;
+    background: var(--color-bg-secondary);
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+}
+.oc-settings-locked input {
+    width: 100%;
+    max-width: 360px;
+    margin: 0.6rem auto;
+    display: block;
+}
+
+/* v1.8.25: schema-check report panel */
+.oc-schema-report {
+    margin-top: 0.8rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.8rem;
+    background: var(--color-bg-secondary);
+}
+.oc-schema-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.4rem 1rem;
+    font-size: 0.85rem;
+    margin: 0.6rem 0;
+}
+.oc-schema-section {
+    margin-top: 0.8rem;
+    padding-top: 0.6rem;
+    border-top: 1px dashed var(--color-border);
+}
+.oc-schema-section h4 {
+    margin: 0 0 0.4rem 0;
+    font-size: 0.95rem;
+}
+.oc-schema-section ul {
+    margin: 0;
+    padding-left: 1.2rem;
+    font-size: 0.85rem;
+}
+.oc-schema-diff {
+    padding: 0.4rem 0;
+    font-size: 0.85rem;
+    border-bottom: 1px dotted var(--color-border);
+}
+.oc-schema-diff:last-child { border-bottom: none; }
+
+/* v1.8.32 — Profile / Domain Models / Analyzer / Auto-routing notice */
+.oc-domain-preset {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    margin: 0.6rem 0;
+    background: var(--color-bg-secondary);
+}
+.oc-domain-preset > summary {
+    cursor: pointer;
+    font-size: 1rem;
+    padding: 0.2rem 0;
+}
+.oc-domain-preset h4 {
+    margin: 0.8rem 0 0.3rem 0;
+    font-size: 0.95rem;
+}
+/* v1.8.41 — Domain Models global provider toolbar (Apply across open presets) */
+#oc-domain-provider-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+    margin: 0.6rem 0;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    background: var(--color-bg-secondary);
+}
+#oc-domain-provider-toolbar .oc-muted {
+    flex-basis: 100%;
+    margin: 0;
+}
+#oc-domain-provider-toolbar select {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.35rem 0.55rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+}
+#oc-domain-provider-toolbar select option {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+}
+#oc-domain-provider-toolbar .oc-status {
+    font-size: 0.85rem;
+    color: var(--color-text-secondary);
+    margin-left: 0.2rem;
+}
+.oc-tag-system {
+    display: inline-block;
+    padding: 0 0.4rem;
+    margin-left: 0.4rem;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    border-radius: 3px;
+    background: var(--color-accent-bg);
+    color: var(--color-text-primary);
+}
+.oc-routing-notice {
+    margin: 0.6rem 0;
+    padding: 0.6rem 0.9rem;
+    border-left: 4px solid var(--color-accent);
+    background: var(--color-accent-bg);
+    color: var(--color-text-primary);
+    border-radius: 4px;
+}
+.oc-routing-notice h3 { margin: 0 0 0.3rem 0; font-size: 1rem; }
+.oc-routing-notice ul { margin: 0.2rem 0 0.4rem 1.2rem; padding: 0; }
+.oc-routing-notice .oc-link {
+    color: var(--color-accent);
+    text-decoration: underline;
+}
+.oc-pre {
+    background: var(--color-bg-secondary);
+    color: var(--color-text-primary);
+    padding: 0.5rem 0.7rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    overflow: auto;
+    max-height: 12rem;
+}
+
+
+/* =====================================================================
+   v1.8.44 — Settings → Worker card
+   Live presence/queue panel. Reuses the shared tokens so light and dark
+   themes stay correct without per-theme overrides.
+   ===================================================================== */
+.oc-worker-summary {
+    margin: 0.4rem 0 0.6rem 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+.oc-worker-summary .oc-alert { flex-basis: 100%; }
+.oc-worker-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 0.25rem 0.9rem;
+    font-size: 0.85rem;
+    margin-bottom: 0.6rem;
+}
+.oc-worker-cmd {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem;
+    margin: 0.25rem 0;
+}
+.oc-worker-cmd code {
+    background: var(--color-bg-code);
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    padding: 0.1rem 0.4rem;
+    word-break: break-all;
+}
+.oc-worker-recs {
+    margin: 0.2rem 0 0.6rem 1.2rem;
+    padding: 0;
+    font-size: 0.85rem;
+}
+.oc-worker-commands > summary {
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    margin: 0.4rem 0 0.2rem 0;
+}
+.oc-worker-test,
+.oc-worker-debug {
+    margin-top: 0.6rem;
+}
+.oc-worker-stale-version {
+    color: var(--color-warning);
+}
+.oc-worker-debug {
+    max-height: 28rem;
+    white-space: pre;
+}
+
+
+/* =====================================================================
+   v1.8.47 — Settings section strip (sticky) + section separation
+   The strip is rendered outside #oc-settings-root (a sticky grid item
+   would be confined to its own grid area and could not travel), and it
+   publishes its height as --oc-settings-nav-height, which the document
+   scroller consumes as scroll-padding-top so anchored sections land
+   below the band. Only --color-* tokens are used, so light
+   and dark themes both work without per-theme rules.
+
+   v1.8.60 — the shell's header is pinned now (assets/css/app.css), so the
+   strip parks BELOW it instead of at the viewport top, and the scroll
+   offset below the strip has to clear the header as well. 64px is that
+   header's pinned height, stated once in app.css; the two declarations
+   here are the ones that have to line up with it. The strip keeps
+   z-index 5, well under the header's 30 — a lower value than the header's
+   is what stops the pills painting over it.
+   ===================================================================== */
+:root { --oc-settings-nav-height: 0px; }
+
+.oc-settings-nav {
+    position: sticky;
+    /* 64px = the pinned header height (app.css), so the strip sits directly
+       under it rather than sliding beneath it. */
+    top: 64px;
+    z-index: 5;
+    /* Full-bleed inside the content column: -2rem matches .oc-content's
+       inline padding, so the band spans the column while the pills stay
+       aligned with the cards. Without this, a card scrolling past would
+       peek out beside the strip. */
+    margin: 0 -2rem 1.25rem -2rem;
+    padding: 0.45rem 2rem;
+    background: var(--color-bg-primary);
+    border-bottom: 1px solid var(--color-border);
+}
+.oc-settings-nav-strip {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    /* Narrow screens: the row scrolls horizontally instead of wrapping and
+       breaking the layout. */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+}
+.oc-settings-nav-link {
+    flex: 0 0 auto;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid transparent;
+    border-radius: 999px;
+    padding: 0.15rem 0.6rem;
+    font: inherit;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    white-space: nowrap;
+    cursor: pointer;
+}
+.oc-settings-nav-link:hover {
+    color: var(--color-text-primary);
+    border-color: var(--color-border);
+}
+.oc-settings-nav-link-active {
+    color: var(--color-text-primary);
+    background: var(--color-bg-surface);
+    border-color: var(--color-accent);
+}
+.oc-settings-nav-link:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+}
+@media (max-width: 720px) {
+    .oc-settings-nav { padding: 0.35rem 2rem; }
+    .oc-settings-nav-link { font-size: 0.75rem; padding: 0.1rem 0.5rem; }
+}
+
+/* Anchored targets stop below the strip instead of under it. The offset
+   lives on the scroller (scroll-padding) so it applies to every
+   scrollIntoView() target — the section strip, the worker-status
+   indicator and migration-banner's heading lookup alike.
+
+   v1.8.60 — the pinned header (app.css, 64px) is part of the offset now:
+   the strip parks below the header, so an anchored card must clear BOTH.
+   `calc(64px + …)` still resolves to 64px outside the admin tabs, where
+   `--oc-settings-nav-height` is reset to 0px, which is exactly right —
+   every scrollIntoView() target on any page has to clear the header.
+   Putting the full offset on the cards (scroll-margin) as well would
+   double-count it; the cards only add a constant breathing gap. */
+html { scroll-padding-top: calc(64px + var(--oc-settings-nav-height)); }
+
+/* Visual separation between sections: a hairline rule on top of every
+   card after the first, so the sections read as distinct blocks even when
+   scanned quickly. */
+.oc-settings > .oc-card {
+    position: relative;
+    scroll-margin-top: 0.5rem;
+}
+.oc-settings > .oc-card + .oc-card { margin-top: 0.25rem; }
+.oc-settings > .oc-card + .oc-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    border-top: 1px dashed var(--color-border);
+}
+
+/* =====================================================================
+   v1.8.47 — Settings → Cache card
+   ===================================================================== */
+.oc-cache-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 0.25rem 1rem;
+    font-size: 0.85rem;
+    margin: 0.4rem 0 0.6rem;
+}
+.oc-cache-hits {
+    font-size: 0.85rem;
+    margin: 0.4rem 0 0.6rem;
+    padding-top: 0.4rem;
+    border-top: 1px dashed var(--color-border);
+}
+.oc-cache-backend {
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.6rem 0.8rem;
+    margin: 0.5rem 0;
+    background: var(--color-bg-secondary);
+}
+.oc-cache-backend h4 {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    margin: 0 0 0.3rem 0;
+    font-size: 0.9rem;
+}
+.oc-cache-distribution { margin-top: 0.6rem; }
+.oc-cache-distribution h4 { margin: 0 0 0.3rem 0; font-size: 0.9rem; }
+.oc-cache-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+}
+.oc-cache-table th,
+.oc-cache-table td {
+    text-align: left;
+    padding: 0.3rem 0.5rem;
+    border-bottom: 1px solid var(--color-border);
+    vertical-align: middle;
+}
+.oc-cache-table th { color: var(--color-text-secondary); font-weight: 500; }
+#oc-cache-days {
+    background: var(--color-bg-surface);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 0.35rem 0.5rem;
+    font-family: inherit;
+    font-size: 0.85rem;
+    width: 5.5rem;
+}

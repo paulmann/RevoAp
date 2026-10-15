@@ -1,0 +1,70 @@
+/vendor/
+/node_modules/
+/logs/*
+!/logs/.gitkeep
+/tests/logs/*
+/src/Core/logs/*
+/.env
+*.key
+.bothub.key
+.openrouter.key
+.openai.key
+.anthropic.key
+.admin.key
+
+# Deployment-specific root-file overrides (deployment URL + DB credentials)
+/.url
+/.sql.php
+# The recursive config overlay. Documented as deployment-local since it
+# was introduced (see config.php's header and AdminAuth's class doc), but
+# never actually listed here — so a host-specific flag or DSN could be
+# committed by accident. v1.8.60 adds the entry the documentation already
+# assumed.
+/.config.php
+
+# Runtime config — operator-managed overrides (no git)
+/var/
+/runtime/
+
+# Model response cache (v1.8.21 hierarchical layout). Keep the
+# directory + .htaccess + .gitkeep tracked, ignore the contents.
+/cache/*
+!/cache/.htaccess
+!/cache/.gitkeep
+
+# Editor / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# PHPUnit
+.phpunit.result.cache
+/coverage/
+
+# Host-side deployment tooling - personal, not part of the shipped project.
+# deploy/systemd/** stays tracked; only this subtree is ignored.
+# It holds the deploy script, its state/ backups and the local manifests.
+/deploy/host/
+
+# Локальный индекс RAGRAF — производные данные, не часть проекта
+.ragraf/
+
+# Basic-auth credentials for the host. Deployment-local by documentation
+# (AGENTS.md §12), but never listed here: unlike .{provider}.key and
+# .admin.key it has no *.key suffix, so the wildcard above never matched it,
+# and a `git add -A` would have published the htpasswd line verbatim.
+/.httpauth
+
+# Host recon dumps: nginx/php/mysql configs, service logs and the copied
+# Debian /etc tree collected while provisioning the server. Not part of the
+# shipped project, and the logs carry visitor IPs.
+/.Debian/
+
+# Agent working material - backups, scratch, task states, workspace copies.
+/.dev_agent/
+/.zwork/
+
+# Stray pytest cache dropped in the root by an unrelated tool run. It also
+# has no read permission, so a recursive walk from the root fails on it.
+/.pytest_cache/

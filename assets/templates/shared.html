@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en" data-theme="{{ui_theme}}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{{title}}</title>
+    <meta name="oc-app-version" content="{{app_version}}">
+    <meta name="oc-ui-theme" content="{{ui_theme}}">
+    <meta name="robots" content="noindex,nofollow">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/themes/light.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/themes/dark.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/app.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/pipeline.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/stats.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/chat.css?v={{asset_version}}">
+    <link rel="stylesheet" href="/assets/css/components/shared.css?v={{asset_version}}">
+    <!-- v1.8.29: KaTeX math rendering (see layout.html for the rationale).
+         v1.8.33 adds the Consensus history container to the auto-render
+         target list so per-role L1 responses on the public read-only
+         page render math identically to the live chat view. -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.css" integrity="sha384-UA8juhPf75SzzAMA/4fo3yOU7sBJ0om7SCD2GHq0fZqZco6tr1UCV7nUbk9J90JM" crossorigin="anonymous">
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/katex.min.js" integrity="sha384-Tt7wBxLKwSzFVRET4O4U9H6v8MNaQ/CjN2FMP4xFm0ErrFu6aNqoonRVW5W40iGI" crossorigin="anonymous"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.45/dist/contrib/auto-render.min.js" integrity="sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz" crossorigin="anonymous"></script>
+</head>
+<body class="oc-shared-body">
+    <header class="oc-header">
+        <div class="oc-brand">{{app_name}}</div>
+        <nav class="oc-nav">
+            <span class="oc-shared-badge" title="Read-only view of a single completed council result. No model controls, no admin actions.">Shared · read-only</span>
+            <span class="oc-version" title="RevoAp v{{app_version}}">v{{app_version}}</span>
+            <button id="oc-shared-theme-toggle" type="button" class="oc-button-ghost" aria-label="Toggle theme">◐</button>
+        </nav>
+    </header>
+    <main class="oc-main oc-shared-main">
+        <section class="oc-shared-summary">
+            <h1>Shared council result</h1>
+            <p class="oc-muted">Public, read-only snapshot of a completed multi-LLM consensus run. No model selection, settings, logs or admin controls are exposed here.</p>
+            <dl class="oc-shared-meta">
+                <div><dt>Created</dt><dd id="oc-shared-created">{{created_at}}</dd></div>
+                <div><dt>Consensus</dt><dd id="oc-shared-status">{{status}}</dd></div>
+                <div><dt>Score</dt><dd id="oc-shared-score">{{score}}</dd></div>
+            </dl>
+        </section>
+
+        <section class="oc-shared-card">
+            <h2>Query</h2>
+            <pre id="oc-shared-query" class="oc-shared-pre">{{query_text}}</pre>
+        </section>
+
+        <!-- v1.8.33: Final answer is the primary surface — visually
+             highlighted, full-width, and rendered BEFORE both the stats
+             card and consensus history. -->
+        <section class="oc-final-answer-section oc-shared-final-section">
+            <div class="oc-final-answer">
+                <header class="oc-final-answer-header">
+                    <span class="oc-final-answer-badge" aria-hidden="true">★</span>
+                    <h2 class="oc-final-answer-title">Final answer</h2>
+                    <span class="oc-final-answer-sub">Synthesised result</span>
+                </header>
+                <div class="oc-final-answer-body">
+                    <article id="oc-shared-final"
+                             class="oc-final-answer-text oc-shared-final oc-history-final-answer">{{final_answer}}</article>
+                </div>
+            </div>
+        </section>
+
+        <!-- v1.8.33: Council statistics — appears between the final
+             answer and the full consensus history. Rendered from
+             persisted data only (no live keys / connector secrets). -->
+        <section class="oc-shared-card oc-shared-stats-card" id="oc-shared-stats">
+            <header class="oc-shared-stats-header">
+                <h2>Council statistics</h2>
+                <p class="oc-muted oc-small">Persisted facts from the recorded session — models, tokens, timings, cost, and consensus quality.</p>
+            </header>
+            <div class="oc-shared-stats-grid" id="oc-shared-stats-grid"
+                 aria-label="Session statistics"></div>
+            <div class="oc-shared-stats-models" id="oc-shared-stats-models" hidden></div>
+        </section>
+
+        <section class="oc-shared-card oc-shared-history-card">
+            <h2>Consensus history</h2>
+            <p class="oc-muted">Ordered pipeline steps with each model's contribution.</p>
+            <div id="oc-shared-pipeline" class="oc-pipeline oc-shared-history" aria-live="polite"></div>
+        </section>
+    </main>
+
+    <script id="oc-shared-snapshot" type="application/json">{{snapshot|raw}}</script>
+    <script type="module" src="/assets/js/shared.js?v={{asset_version}}"></script>
+    <script type="module" src="/assets/js/katex-render.js?v={{asset_version}}"></script>
+    <!-- v1.8.41: Mermaid diagram renderer (see layout.html for rationale). -->
+    <script type="module" src="/assets/js/mermaid-render.js?v={{asset_version}}"></script>
+</body>
+</html>

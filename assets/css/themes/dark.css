@@ -1,0 +1,69 @@
+:root[data-theme="dark"] {
+    --color-bg-primary:    #0d1117;
+    --color-bg-secondary:  #161b22;
+    --color-bg-surface:    #21262d;
+
+    /* Elevated tiles / cards and interaction states. Component CSS used to
+       reach these through `--bg-elev`-style names that no theme ever
+       defined, so every file carried its own dark hard-coded fallback in
+       a var() call. The dark values below match what those fallbacks
+       already rendered, so this theme stays visually unchanged. */
+    --color-bg-elevated:   #1b2030;
+    --color-bg-hover:      #262c3a;
+    /* v1.8.47: darkened from #233056. The selected history item's meta row
+       (--color-text-secondary on this surface) measured 4.19:1 at #233056,
+       just under AA. #1e2947 puts it at 4.67:1 and lifts every other text
+       token that can land on a selected row with it. */
+    --color-bg-active:     #1e2947;
+    --color-bg-code:       #0b0e14;
+    --color-text-code:     #c9d1d9;
+
+    /* Translucent status plaques: tinting the theme's own base colour keeps
+       one rule valid on both themes and on any parent surface. Alpha is
+       capped where the palette's own text token sits on the tint — at 0.10
+       --color-text-secondary on --color-accent-bg drops to 4.46:1, just
+       under AA (see theme-probe/contrast-solve.mjs). */
+    --color-accent-bg:     rgba(88, 166, 255, 0.08);
+    --color-success-bg:    rgba(63, 185, 80, 0.16);
+    --color-warning-bg:    rgba(210, 153, 34, 0.16);
+    --color-error-bg:      rgba(248, 81, 73, 0.16);
+
+    /* The History tab's "Final answer" plaque. Opaque on purpose: the block
+       is the one surface an operator reads end to end, so its legibility
+       must not depend on whichever card happens to sit behind it — and an
+       opaque pair keeps the measurement below exact instead of "measured
+       over one particular parent". The component builds its velvet gradient
+       from --color-final-answer-bg, so these two values are the only ones
+       that can affect the rendered plaque. Measured worst (lightest)
+       gradient stop: text-primary (#e6edf3) 13.12:1, text-secondary
+       (#8b949e) 5.04:1 — both clear AA. */
+    --color-final-answer-bg:     #16281c;
+    --color-final-answer-border: #2f6b3f;
+
+    --color-border:        #30363d;
+    --color-text-primary:  #e6edf3;
+    --color-text-secondary:#8b949e;
+    --color-accent:        #58a6ff;
+    --color-accent-hover:  #79c0ff;
+    /* v1.8.47: --color-accent is tuned for accent TEXT on a page surface
+       (#0d1117); as a fill it is far too light — white on #58a6ff is only
+       2.53:1. Every control that paints the accent behind white text uses
+       the fill tokens instead. #1f6feb carries white at 4.63:1, and the
+       hover state goes darker rather than lighter (6.31:1) because the
+       existing --color-accent-hover would drop white to 3.34:1. */
+    --color-accent-fill:      #1f6feb;
+    --color-accent-fill-hover:#1a5cbf;
+    --color-success:       #3fb950;
+    --color-warning:       #d29922;
+    --color-error:         #f85149;
+    /* v1.8.47: the status colours are tuned as text on a page surface
+       (#0d1117), not as text on a tint of themselves — #f85149 on its own
+       0.16 plaque is 4.02:1, and on a selected history row 4.28:1. Wherever
+       a status colour is painted as TEXT on a status tint or on
+       --color-bg-active, the matching -text token is used. --color-success
+       already clears AA on its plaque in this theme (4.89:1), so its -text
+       counterpart keeps the same value. */
+    --color-success-text:  #3fb950;
+    --color-error-text:    #ff7b72;
+    --shadow-sm:           0 1px 3px rgba(0,0,0,.4);
+}

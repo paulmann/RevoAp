@@ -1,0 +1,17 @@
+<article class="oc-step" data-step-id="{{id}}" data-status="{{status}}">
+    <header class="oc-step-header">
+        <span class="oc-step-layer">{{layer}}</span>
+        <span class="oc-step-label">{{label}}</span>
+        <span class="oc-step-status oc-status-{{status}}">{{status}}</span>
+    </header>
+    <nav class="oc-step-tabs" role="tablist">
+        <button class="oc-tab" data-tab="response" aria-selected="true">Response</button>
+        <button class="oc-tab" data-tab="stats" aria-selected="false">Statistics</button>
+        <button class="oc-tab" data-tab="raw" aria-selected="false">Raw</button>
+    </nav>
+    <section class="oc-tab-pane oc-tab-response" data-pane="response">{{response_text}}</section>
+    <section class="oc-tab-pane oc-tab-stats" data-pane="stats" hidden>{{stats_html|raw}}</section>
+    <section class="oc-tab-pane oc-tab-raw" data-pane="raw" hidden>
+        <pre class="oc-pre">{{raw_json}}</pre>
+    </section>
+</article>
