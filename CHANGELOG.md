@@ -3,6 +3,50 @@
 All notable changes to this project are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.1.0] - 2026-10-16
+
+### Fixed
+
+- **A whole class of controls was silently dead.** `h()` (assets/js/ui/dom.js)
+  accepted listeners only through `on: { click }`, while the panel modules pass
+  `onClick:` in ~190 places. That key was neither an element property nor a
+  listener, so it fell through to `setAttribute('onClick', ...)` — an inline
+  handler, which this console's Content-Security-Policy refuses to compile.
+  The command palette (click and Ctrl+K, with live filtering), the sidebar
+  navigation (panel, hash and `aria-current` now move together), the appearance
+  dialog's accent swatches and language grid, and the dialog buttons across the
+  admin panels all worked again once `h()` bound every `on<Event>` prop.
+- **The Settings sub-nav covered the content it belongs to.** Its sticky offset
+  was `top: 64px`, measured against `.app-main` — the scrolling ancestor —
+  rather than the viewport, so the strip parked 64px below the top of the
+  content area and floated over the notice and the first card.
+- **Choosing a language changed nothing.** The panels are rendered by PHP, so
+  `t()` cannot re-translate text that is already in the document; the choice was
+  stored (cookie + localStorage) but nothing navigated. A locale change now
+  finishes with a reload, from one place in i18n.js, so the header select, the
+  drawer, the dialog grid and the command palette are all covered.
+- **`[ui/icons] unknown icon "slash"`** — fallback.js referenced an icon that
+  icons.js never defined; the marker for a retired model drew nothing.
+- **A dead `/manifest.webmanifest` link** — every page load ended with a 404 and
+  a "Manifest fetch failed" error for a file that has never shipped.
+
+### Changed
+
+- **The app's own JS/CSS revalidate instead of living a day in cache.**
+  `<script src>` and stylesheet links carry `?v=<asset_version>`, but the
+  specifiers ES modules import each other with cannot, so after a deploy a
+  returning browser kept the previous module: the page looked updated while the
+  shell behaved one release behind. `layout.html` now ships an import map that
+  points every module at its versioned URL (generated from the module list —
+  the command is in the comment), and the host serves `/assets/js/` and
+  `/assets/css/` with `expires -1`, so a missing map entry costs one conditional
+  request instead of a stale release.
+
+### Licence
+
+- **MIT to PolyForm Noncommercial 1.0.0** (canonical text; `composer.json`
+  agrees). Commercial use now requires a separate licence.
+
 ## [2.0.0] - 2026-10-15
 
 Full front-end rebuild, internationalisation, a persistent model-availability
