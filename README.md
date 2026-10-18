@@ -468,4 +468,4 @@ verification commands and the current default list.
 
 ## License
 
-MIT
+PolyForm Noncommercial 1.0.0
