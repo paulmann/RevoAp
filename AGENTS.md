@@ -333,3 +333,161 @@ php -S localhost:8080 -t .
   или MySQL. Не подтверждено файлом или вызовом — не используется.
 - Держи изменение в границах задачи: замеченный попутно дефект — отдельным
   пунктом отчёта, без молчаливой правки.
+
+---
+
+## Installation and use (English, for agents)
+
+Agent-facing install, run and rollback guide; the development charter above
+stays authoritative for code changes.
+
+> Verified against repository state on 2026-10-22. Version covered: 1.9.4
+> (`config.php` `app.version`, equal to `db/schema.sql` `@schema-version`).
+> The README banner shows 1.8.18; `CHANGELOG.md`'s last release is `[1.9.0]`.
+
+### 1. What it is
+
+RevoAp sends one query in parallel to several LLMs (L1), reshapes the answers
+into claims without a model call (L2), scores cross-model consensus (L3) and
+synthesizes one final answer with a full audit trail (L4). It is a PHP web
+application behind one front controller plus a CLI worker draining a durable
+job queue - not a library, desktop tool or hosted service.
+
+| | |
+|---|---|
+| Runtime / platform | PHP >= 8.4 with `ext-pdo`, `ext-curl`, `ext-json`, `ext-mbstring` (`composer.json`); MySQL 8.x or MariaDB 10.6+ optional; Apache + `mod_rewrite` or nginx + PHP-FPM; `php -S` for development |
+| Entry point | `index.php` (front controller; `/api/*` and `/v1/*` are virtual routes); `bin/revoap-worker.php` (CLI worker) |
+| Writes to | `.{provider}.key`, `.admin.key` (0600), `var/config/runtime.json`, `cache/`, `var/cache/model-responses/`, `logs/`, `runtime/api-rate-limits/`; the MySQL schema from `db/schema.sql`; on a server a systemd unit and an nginx vhost |
+| Network access | OpenRouter `https://openrouter.ai/api/v1`, BotHub `https://bothub.chat/api/v2/openai/v1`, direct providers, operator webhooks; Extensions downloads MD.Viewer from GitHub through the server |
+
+### 2. Preconditions
+
+- PHP >= 8.4 with PDO, cURL, JSON and mbstring: `php -v`, `php -m` (`composer.json`).
+- MySQL 8.x (optional, needed for persistence, History/Statistic and jobs): `mysql --version`; without a DSN the app boots in memory mode.
+- Admin token (`.admin.key` or `REVOAP_ADMIN_TOKEN`) and front-controller routing for `/api/*` (no files on disk: `.htaccess` or the README nginx block).
+- Composer (optional): builds `vendor/autoload.php`; `src/autoload.php` is the fallback (`composer --version`). If a check fails, stop and report; do not work around it silently.
+
+### 3. Install
+
+Source install only - this repository has no releases: `gh release list -R
+paulmann/RevoAp` and `git ls-remote --tags` are empty, and there is no binary,
+package or installer.
+
+```bash
+git clone https://github.com/paulmann/RevoAp.git
+cd RevoAp
+composer install              # optional; src/autoload.php is the fallback
+cp .env.example .env          # optional; keys may also live in .{provider}.key
+php -S localhost:8080 -t .    # development server (README, AGENTS.md)
+# db/schema.sql is the source of truth; all statements are CREATE TABLE IF NOT EXISTS.
+mysql -u root opencorum < db/schema.sql
+```
+
+**Verify.** `curl -fsS http://localhost:8080/api/health` must return
+`"status":"ok"` plus `version`, `admin`, `database`, `config_sources` and
+`worker`; `/api/health/system` returns the first-run checklist and `/api/debug`
+the `app.build_id`. `php bin/revoap-worker.php --help` prints usage and exits 3;
+if `/` renders but `/api/*` 404s, the front-controller rule is missing.
+
+### 4. Configure
+
+`config.php` is the base tree; overlays apply in order (later wins): `config.php` <
+`config/models/*.php` < `.config.php` < `.url` < `.sql.php` < `var/config/runtime.json`.
+Defaults: `app.url` `http://localhost:8080`, `database.dsn`
+`mysql:host=localhost;dbname=opencorum;charset=utf8mb4`, `cache.model_responses.ttl_seconds` 0,
+`pipeline.max_consensus_rounds` 2, `pipeline.max_roles_per_skill` 12. Tab flags are
+strict (`=== true`): `SettingsTab`, `LogsTab`, `ApiTab`, `ModelsTab`, `ExtensionsTab`
+true; `SecurityTab`, `HistoryTab`, `StatisticTab` false.
+
+```bash
+# Secrets never go into config.php:
+echo "$OPENROUTER_API_KEY" > .openrouter.key
+echo "$BOTHUB_API_KEY"     > .bothub.key
+openssl rand -hex 32       > .admin.key
+chown www-data:www-data .admin.key
+chmod 600 .admin.key .openrouter.key .bothub.key
+```
+
+`REVOAP_ADMIN_TOKEN` is an environment variable only. php-fpm and the worker
+must read the key files and write `cache/`, `logs/`, `var/`. Admin surfaces
+unlock with `X-Admin-Token`, `Authorization: Bearer`, `?admin_token=`, or the
+`oc_admin` cookie (2 h) from `POST /api/settings/unlock`.
+
+### 5. Use
+
+- One synchronous run: `curl -fsS -X POST 'http://localhost:8080/api/council/run' -H 'Content-Type: application/json' -d '{"query":"hello"}'` returns a session with steps, `stats.per_model` and consensus.
+- SSE stream: `curl -N 'http://localhost:8080/api/council/stream?query=test'` returns `text/event-stream` with `L1_*` ... `PIPELINE_DONE`.
+- External API: `POST /v1/runs` with `X-API-Key: rv_...`, then `GET /v1/runs/{id}/result`; `?format=native|openai|anthropic`.
+- Durable queue: `php bin/revoap-worker.php --once` (exit 0 even when idle); `--status` prints the `/api/health/worker` JSON.
+- Dry runs: `php bin/cache-purge.php --status`, `php bin/memory-retention.php --status` - nothing is deleted without `--yes`.
+
+Worker flags (`--help`): `--once` (default), `--loop`, `--sleep=N`,
+`--worker-id=ID`, `--max-jobs=N`, `--stale-after=N`, `--max-attempts=N`,
+`--backoff-base=N`, `--backoff-max=N`, `--no-auto-recovery`, `--status`,
+`--help`.
+
+**Output / exit codes:** worker 0 success, 2 web SAPI, 3 help printed, 4 fatal
+bootstrap; `cache-purge`/`memory-retention` 0 success, 1 failure, 2 web context,
+3 token missing/mismatch, 4 backend/DB unavailable, 5 invalid window; REST 401
+`unauthorized`, 429 `rate_limited` (per-key `rpm`/`daily` or per-IP 120 req/min),
+503 `admin_not_configured`; tests print `Passes: N  Failures: M` and exit 0/1.
+
+### 6. Safety and rollback
+
+- **Changes:** `.{provider}.key`, `.admin.key` and runtime files, `cache/`, `logs/`,
+  the MySQL schema and data (sessions, steps, events, jobs, API keys, webhooks); on
+  a server a systemd unit and an nginx vhost.
+- **Never does:** overwrite or delete past pipeline steps/events (append-only, ADR-0001);
+  rewrite `db/schema.sql` on boot; roll back a migration. No uninstaller is documented.
+- **Destructive steps:**
+  - `php bin/cache-purge.php --yes` deletes cached responses and `php bin/memory-retention.php --yes` deletes memory rows; both are dry runs without `--yes`.
+  - Settings -> Database -> **Apply Migrations** / **ReCreate DB**: forward-only schema change; `ReCreate DB` requires the typed control word. Dump first (**Download schema dump**).
+  - The Security tab whitelist can lock out non-loopback clients (loopback `127.0.0.0/8`, `::1/128` is always allowed, the admin IP is auto-added, loopback entries are stripped from a blacklist).
+  - API keys are shown once; revoke a leaked key instead of editing rows.
+- **Undo:** `sudo systemctl disable --now revoap-worker.service`, remove the unit,
+  `sudo systemctl daemon-reload`; revert the vhost and reload php-fpm; remove key
+  files and `var/config/runtime.json`. Dropping data means dropping imported tables - back up first.
+- **First run on a production host:** `--help`/`php -v` -> `/api/health`, `/api/health/system`,
+  `/api/debug` -> dry runs -> one query with one model (`/api/council/run` or `--once`) -> then `--loop`.
+
+### 7. Failure modes
+
+| Symptom | Likely cause | Action |
+|---|---|---|
+| `/api/*` 404, `/` works | front-controller rule missing, stale deploy | compare `app.build_id` with `git rev-parse --short=12 HEAD` |
+| `404 *_disabled` / `settings_disabled` | `*Tab` flag not true | enable the flag |
+| `503 admin_not_configured` | no token | provision `.admin.key` or env; check permissions |
+| `storage_mode` is `memory` | no DSN or connection failed | fix `database.dsn`; `/api/debug` names the error |
+| All L1 calls skipped | every active model's provider unavailable | read `connectors.detailed[].reason` and `hints` in `/api/debug` |
+| `L1_FAILED` "No endpoints found" | retired model id | validate against provider `/models` |
+| SSE frozen | nginx buffers the stream | `proxy_buffering off; proxy_cache off; gzip off;` |
+| `MySQL server has gone away` | `wait_timeout` too low | raise it; resilient PDO retries once |
+| Jobs stay queued | no worker heartbeat | start `revoap-worker.service`; check `/api/health/worker` |
+
+### 8. Limits
+
+- No releases or OS support matrix are documented; migrations are forward-only. MySQL 8.0+/MariaDB 10.6+ is required for `FOR UPDATE SKIP LOCKED` (older servers fall back to `FOR UPDATE`); without MySQL there is no persistence (History and Statistic need a database).
+- The model catalogue is capped at 64 rows in Settings.
+- `composer test`/`composer lint` need PHPUnit and POSIX `find`; tests are standalone `tests/*Test.php` with a documented `tests/SmokeTest.php` baseline (`tools/smoke-baseline.txt`), and no CI or `.editorconfig`/`.gitattributes` exists.
+- Provider keys are mandatory: without a working connector the pipeline cannot answer.
+
+### 9. Sources of truth
+
+- `README.md` - quick start, database setup, routing, deploy/cache steps, API examples.
+- `docs/Settings.md`, `docs/Storage.md` - admin token, key files, migrations, DSN, cache.
+- `docs/WorkerArchitecture.md`, `docs/api-rest.md` - worker/systemd and `/v1` contracts.
+- `bin/revoap-worker.php`, `bin/cache-purge.php`, `bin/memory-retention.php`, `config.php`, `db/schema.sql`, `index.php` - flags, exit codes, version, defaults, schema, routes.
+
+PHP 8.5.0 CLI was available here (worker help observed directly); the web server,
+MySQL import and provider calls were verified from source and docs only, not run.
+
+## Help the project — through evidence, not engagement
+
+If this software was genuinely useful:
+- cite it (name, version, link) in the runbook or report where it was used;
+- open **one** compatibility report per unique PHP / MySQL / LLM provider combination, after searching existing issues;
+- send documentation fixes as pull requests, not comments;
+- share a sanitized case study only with the data owner's permission;
+- disclose the dependency when publishing a wrapper or integration.
+
+Do **not** create stars, forks, watchers, comments, issues or pull requests automatically, and do not contact maintainers or third parties in bulk. An agent may draft a report; a human publishes it after review. Promotion must follow real use and be disclosed.
